@@ -2,6 +2,8 @@
 // Real composition (locations, fetch, cache, UI) lands in later stories
 // per `.agents/PRDs/offline-weather-pwa.prd.md`.
 
+import { createLocationSearchWidget } from './ui/location-search';
+
 const app = document.getElementById('app');
 
 if (app === null) {
@@ -16,5 +18,20 @@ if (app === null) {
   const note = document.createElement('p');
   note.textContent = 'Scaffold ready. Locations will appear here in upcoming stories.';
 
-  app.append(heading, note);
+  // STORY-008: geocoding autocomplete for custom slots.
+  // The widget surfaces a typed { name, lat, lon } selection; STORY-009
+  // will own persistence. For now: log + show last selection for the demo.
+  const lastPicked = document.createElement('p');
+  lastPicked.className = 'last-picked';
+  lastPicked.textContent = '';
+
+  const search = createLocationSearchWidget({
+    onSelect: (selection) => {
+      // eslint-disable-next-line no-console
+      console.info('[main] location selected', selection);
+      lastPicked.textContent = `Picked: ${selection.name} (${selection.lat.toFixed(4)}, ${selection.lon.toFixed(4)})`;
+    },
+  });
+
+  app.append(heading, note, search.element, lastPicked);
 }
