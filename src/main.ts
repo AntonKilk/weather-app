@@ -1,25 +1,37 @@
 // Entry point — wiring only (CLAUDE.md > Architecture).
 //
-// STORY-005: the four default location slots are now sourced from the
+// STORY-005: the four default location slots are sourced from the
 // `VITE_DEFAULT_LOCATIONS` env var (parsed + validated at the boundary) and
 // the per-slot forecast comes from the real Open-Meteo client (STORY-004).
 // Mocks remain available to tests but are no longer on the production path.
 //
+// STORY-008: a geocoding autocomplete widget is mounted under the slot grid;
+// the widget surfaces typed `{ name, lat, lon }` selections.
+//
+// STORY-009: custom slots are added/removed via the search widget and
+// persisted on-device (localStorage). Max 2 custom slots; default slots are
+// not removable. Custom-slot data must NOT leave the device.
+//
 // Data flow:
 //   1. Parse `import.meta.env.VITE_DEFAULT_LOCATIONS` → typed `Location[]`.
-//      Parse failure → console.error + empty UI (CLAUDE.md > Error handling:
-//      no raw errors in the UI; render a friendly state).
-//   2. `Promise.allSettled(fetchForecast(...))` per location — per-slot
-//      isolation per CLAUDE.md > Fault tolerance: one slot's failure must
-//      not blank-screen the others.
-//   3. Map each result into an `AppItem` (forecast on ok, null on error) and
-//      render. The card / detail components already handle `forecast: null`
-//      as an "Unavailable" state, so nothing here needs to know about it.
+//      Parse failure → console.error + render only custom slots (CLAUDE.md
+//      › Error handling: no raw errors in the UI; render a friendly state).
+//   2. Load custom slots from localStorage (corrupt store → drop + warn).
+//   3. Build the unified slot list: defaults first, then custom (max 2).
+//   4. `Promise.allSettled(fetchForecast(...))` per slot that has a location —
+//      per-slot isolation per CLAUDE.md › Fault tolerance: one slot's failure
+//      must not blank-screen the others.
+//   5. Re-render whenever the custom-slot store changes (add / remove).
 
 import './ui/styles.css';
 import { parseDefaultLocations } from './locations/env';
+import {
+  createCustomSlotStore,
+  type CustomSlotStore,
+} from './locations/custom-slots';
 import type { Location, LocationSlot } from './locations/types';
 import { renderApp, type AppItem } from './ui/app';
+import { createLocationSearchWidget } from './ui/location-search';
 import { fetchForecast } from './weather/open-meteo-client';
 import type { ForecastResponse } from './weather/types';
 
@@ -38,91 +50,128 @@ export interface BootstrapOptions {
    * Tests inject a stub to avoid real network.
    */
   readonly fetchImpl?: typeof fetch;
+  /**
+   * Custom-slot store. Tests inject an in-memory store; production wiring
+   * uses the localStorage-backed default.
+   */
+  readonly customSlotStore?: CustomSlotStore;
+  /**
+   * If true, mount the geocoding search widget. Tests usually leave this
+   * `false` to keep DOM assertions focussed on the slot grid.
+   */
+  readonly mountSearchWidget?: boolean;
 }
 
 /**
  * Build the initial app state and render it into `root`.
  *
- * Never throws — every failure mode (parse error, fetch failure) is
- * surfaced as a console log + a UI state that still renders.
+ * Never throws — every failure mode (parse error, fetch failure, storage
+ * corruption) is surfaced as a console log + a UI state that still renders.
  */
 export async function bootstrap(root: HTMLElement, opts: BootstrapOptions = {}): Promise<void> {
   const raw = opts.rawEnv !== undefined ? opts.rawEnv : import.meta.env.VITE_DEFAULT_LOCATIONS;
   const parsed = parseDefaultLocations(raw);
 
+  let defaults: readonly Location[] = [];
   if (!parsed.ok) {
     // CLAUDE.md > Error handling: log internally, render a friendly state.
-    // Empty UI is the correct "no data at all" representation here.
     // eslint-disable-next-line no-console
     console.error(
       `[main] VITE_DEFAULT_LOCATIONS invalid (${parsed.error.kind}): ${parsed.error.message}`,
     );
-    renderApp(root, []);
-    return;
+  } else {
+    defaults = parsed.locations;
   }
-
-  const locations = parsed.locations;
   // eslint-disable-next-line no-console
-  console.info(`[main] bootstrapping with ${locations.length} default location(s)`);
+  console.info(`[main] bootstrapping with ${defaults.length} default location(s)`);
 
-  if (locations.length === 0) {
-    renderApp(root, []);
-    return;
+  const customStore = opts.customSlotStore ?? createCustomSlotStore();
+
+  // Render closure — captures `root`, `defaults`, and the fetch impl. Re-runs
+  // whenever the custom-slot store changes (add / remove / clear) so the grid
+  // stays in sync with persistence.
+  const renderNow = async (): Promise<void> => {
+    const customs = customStore.list();
+    const slots = buildSlots(defaults, customs);
+    const items = await fetchAllForecasts(slots, opts.fetchImpl);
+    renderApp(root, items);
+  };
+
+  // Mount the geocoding search widget (production wiring only — tests opt in).
+  if (opts.mountSearchWidget === true) {
+    mountSearchWidget(root, customStore, () => {
+      void renderNow();
+    });
   }
 
-  const items = await fetchAllForecasts(locations, opts.fetchImpl);
-  renderApp(root, items);
+  // Re-render on every store change. The store calls subscribers synchronously
+  // after the mutation, so each add/remove kicks off a fresh fetch cycle.
+  customStore.subscribe(() => {
+    void renderNow();
+  });
+
+  await renderNow();
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Compose the unified slot list: defaults first, then custom slots padded to
+ * the cap (`MAX_CUSTOM_SLOTS`) with empty placeholders. The grid always shows
+ * the same number of cells regardless of how many custom slots are filled.
+ */
+function buildSlots(
+  defaults: readonly Location[],
+  customs: readonly Location[],
+): readonly LocationSlot[] {
+  const slots: LocationSlot[] = [];
+  for (const location of defaults) {
+    slots.push({ kind: 'default', location });
+  }
+  // Padding empty custom slots keeps the layout stable until the user fills
+  // them. The UI renders a "Add a location" placeholder for the null case.
+  const cap = 2;
+  for (let i = 0; i < cap; i += 1) {
+    const location = customs[i] ?? null;
+    slots.push({ kind: 'custom', location });
+  }
+  return slots;
+}
+
 async function fetchAllForecasts(
-  locations: readonly Location[],
+  slots: readonly LocationSlot[],
   fetchImpl: typeof fetch | undefined,
 ): Promise<readonly AppItem[]> {
-  // Parallel fetches with per-slot isolation. Even if one promise rejects
-  // unexpectedly (the client should never throw, but defensively...), the
-  // others still resolve via `allSettled`.
-  const settled = await Promise.allSettled(
-    locations.map((location) =>
-      fetchForecast(
+  // Per-slot isolation: each fetch is independent, and `allSettled` makes
+  // sure one slot's rejection cannot blank-screen the others.
+  const tasks = slots.map(async (slot): Promise<AppItem> => {
+    if (slot.location === null) {
+      return { slot, forecast: null };
+    }
+    const location = slot.location;
+    try {
+      const result = await fetchForecast(
         { lat: location.lat, lon: location.lon },
         fetchImpl !== undefined ? { fetchImpl } : {},
-      ),
-    ),
-  );
-
-  const items: AppItem[] = [];
-  for (let i = 0; i < locations.length; i += 1) {
-    const location = locations[i];
-    if (location === undefined) continue; // noUncheckedIndexedAccess guard
-    const slot: LocationSlot = { kind: 'default', location };
-    const outcome = settled[i];
-    const forecast = extractForecast(location.name, outcome);
-    items.push({ slot, forecast });
-  }
-  return items;
+      );
+      const forecast = extractForecast(location.name, result);
+      return { slot, forecast };
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      // eslint-disable-next-line no-console
+      console.error(`[main] ${location.name}: fetch threw unexpectedly: ${reason}`);
+      return { slot, forecast: null };
+    }
+  });
+  return Promise.all(tasks);
 }
 
 function extractForecast(
   name: string,
-  outcome: PromiseSettledResult<Awaited<ReturnType<typeof fetchForecast>>> | undefined,
+  result: Awaited<ReturnType<typeof fetchForecast>>,
 ): ForecastResponse | null {
-  if (outcome === undefined) {
-    // Shouldn't happen — index lined up by construction. Defensive.
-    // eslint-disable-next-line no-console
-    console.warn(`[main] ${name}: no fetch outcome (defensive)`);
-    return null;
-  }
-  if (outcome.status === 'rejected') {
-    const reason = outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason);
-    // eslint-disable-next-line no-console
-    console.error(`[main] ${name}: fetch rejected unexpectedly: ${reason}`);
-    return null;
-  }
-  const result = outcome.value;
   if (!result.ok) {
     // eslint-disable-next-line no-console
     console.warn(`[main] ${name}: forecast unavailable (${result.error.kind})`);
@@ -133,18 +182,60 @@ function extractForecast(
   return result.data;
 }
 
+/**
+ * Mount the autocomplete widget into a stable container under `#app`.
+ *
+ * The widget container lives outside the slot grid so the grid's re-render
+ * (replaceChildren on the grid root) does not blow it away. We attach it
+ * lazily on first call.
+ */
+function mountSearchWidget(
+  root: HTMLElement,
+  store: CustomSlotStore,
+  onAdd: () => void,
+): void {
+  let container = document.getElementById('location-search');
+  if (container === null) {
+    container = document.createElement('section');
+    container.id = 'location-search';
+    container.className = 'location-search-container';
+    // Insert before the slot grid root if present, else append. The grid
+    // owns `#app` content via `renderApp` and uses `replaceChildren`, so
+    // placing this container as a sibling of `#app` keeps it stable.
+    const parent = root.parentElement ?? document.body;
+    parent.insertBefore(container, root);
+  } else {
+    container.replaceChildren();
+  }
+
+  const widget = createLocationSearchWidget({
+    onSelect: (selection) => {
+      const outcome = store.add(selection);
+      if (!outcome.ok) {
+        // eslint-disable-next-line no-console
+        console.warn(`[main] custom slot add rejected: ${outcome.error.kind}`);
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.info(`[main] custom slot added: ${selection.name}`);
+      onAdd();
+    },
+  });
+  container.append(widget.element);
+}
+
 // ---------------------------------------------------------------------------
 // Module-level wiring (runs in the browser; tests import `bootstrap` directly)
 // ---------------------------------------------------------------------------
 
-const root = document.getElementById('app');
+const rootEl = document.getElementById('app');
 
-if (root === null) {
+if (rootEl === null) {
   // Nothing to render into — log internally, do not throw in the page.
   // (CLAUDE.md > Observability: console at boundaries.)
   // eslint-disable-next-line no-console
   console.error('[main] #app root element not found in index.html');
 } else {
   // Fire-and-forget — bootstrap never throws, errors are logged inside.
-  void bootstrap(root);
+  void bootstrap(rootEl, { mountSearchWidget: true });
 }
