@@ -4,6 +4,8 @@ node_modules/
 # Build output
 dist/
 .vite/
+# vite-plugin-pwa dev cache (only written if devOptions.enabled is ever flipped on)
+dev-dist/
 
 # Test artifacts
 coverage/

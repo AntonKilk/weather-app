@@ -19,6 +19,7 @@
 import './ui/styles.css';
 import { parseDefaultLocations } from './locations/env';
 import type { Location, LocationSlot } from './locations/types';
+import { registerServiceWorker } from './sw-register';
 import { renderApp, type AppItem } from './ui/app';
 import { fetchForecast } from './weather/open-meteo-client';
 import type { ForecastResponse } from './weather/types';
@@ -148,3 +149,8 @@ if (root === null) {
   // Fire-and-forget — bootstrap never throws, errors are logged inside.
   void bootstrap(root);
 }
+
+// STORY-006: register the precaching service worker so the app shell is
+// available offline after the first load. No-op under jsdom/tests and on
+// browsers without SW support; never throws.
+registerServiceWorker();
