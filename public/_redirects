@@ -1,7 +1,0 @@
-# Cloudflare Pages SPA fallback.
-#
-# The app has no client router today; this rule is defensive — any unknown
-# path (e.g. a stale Add-to-Home-Screen shortcut, a manual deep link) renders
-# index.html instead of returning 404. Static assets and the service worker
-# are matched by their concrete paths and bypass this rule.
-/*    /index.html   200
