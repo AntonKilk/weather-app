@@ -1,0 +1,166 @@
+/* Global styles — hotspot per CLAUDE.md. Keep tokens here, scoped rules per component. */
+
+:root {
+  --bg: #f5f7fa;
+  --card-bg: #ffffff;
+  --fg: #0b1726;
+  --muted: #6b7785;
+  --accent: #f7b500;
+  --border: #e3e8ee;
+  --radius: 14px;
+  --gap: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1726;
+    --card-bg: #142235;
+    --fg: #e9eef5;
+    --muted: #93a1b3;
+    --border: #1f3148;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  color-scheme: light dark;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.locations-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--gap);
+}
+
+@media (min-width: 700px) {
+  .locations-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.location-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 88px;
+  padding: 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    border-color 120ms ease,
+    transform 80ms ease;
+}
+
+.location-card:hover {
+  border-color: var(--muted);
+}
+
+.location-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.location-card[aria-expanded='true'] {
+  border-color: var(--accent);
+}
+
+.location-card--degraded {
+  opacity: 0.78;
+}
+
+.location-card__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.location-card__name {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--fg);
+  letter-spacing: 0.01em;
+}
+
+.location-card__temp-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.location-card__temp {
+  font-size: 1.9rem;
+  font-weight: 500;
+  color: var(--fg);
+  line-height: 1.1;
+}
+
+.location-card__desc {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.location-card__meta {
+  display: flex;
+  gap: 12px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  flex-wrap: wrap;
+}
+
+.location-card__status {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.weather-icon {
+  flex-shrink: 0;
+}
+
+.detail-placeholder {
+  padding: 14px 16px;
+  margin: -4px 4px 4px;
+  background: var(--card-bg);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.detail-placeholder__heading {
+  margin: 0 0 4px;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.detail-placeholder__note {
+  margin: 0;
+}
