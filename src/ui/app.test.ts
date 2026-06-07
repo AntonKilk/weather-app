@@ -76,8 +76,11 @@ describe('renderApp (UI skeleton smoke)', () => {
     const detailName = detail?.querySelector('.detail-name');
     expect(detailName?.textContent).toBe('Lahti');
 
-    const placeholder = detail?.querySelector('.detail-placeholder');
-    expect(placeholder?.textContent).toContain('STORY-003');
+    // STORY-003 replaced the placeholder block with the hourly chart and
+    // 7-day strip; the placeholder should be gone and the new sections present.
+    expect(detail?.querySelector('.detail-placeholder')).toBeNull();
+    expect(detail?.querySelector('.detail-chart svg')).not.toBeNull();
+    expect(detail?.querySelector('.detail-daily')).not.toBeNull();
 
     const back = detail?.querySelector('button.detail-back') as HTMLButtonElement | null;
     expect(back).not.toBeNull();

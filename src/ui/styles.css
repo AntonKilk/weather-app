@@ -272,3 +272,165 @@ body {
   stroke: var(--accent-rain);
   fill: none;
 }
+
+/* Detail — hourly chart (STORY-003) -----------------------------------------*/
+
+.detail-chart {
+  background-color: var(--surface);
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-chart-title,
+.detail-daily-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.detail-chart-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.detail-chart-area {
+  fill: var(--accent-warm);
+  fill-opacity: 0.18;
+  stroke: none;
+}
+
+.detail-chart-line {
+  stroke: var(--accent-warm);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.detail-chart-label-temp {
+  fill: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-chart-label-time {
+  fill: var(--text-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-chart-fallback {
+  margin: 0;
+  padding: 12px;
+  border-radius: 12px;
+  background-color: var(--surface-2);
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 13px;
+}
+
+.detail-precip-row {
+  display: grid;
+  grid-template-columns: repeat(var(--precip-cols, 8), 1fr);
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.detail-precip-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.detail-precip-cell--empty {
+  /* Reserve the column so chart and row stay aligned. */
+  min-height: 1px;
+}
+
+.detail-precip-drop {
+  width: 10px;
+  height: 14px;
+  display: block;
+}
+
+.detail-precip-drop-shape {
+  fill: var(--accent-rain);
+}
+
+.detail-precip-mm,
+.detail-precip-prob {
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  text-align: center;
+}
+
+/* Detail — 7-day strip (STORY-003) ------------------------------------------*/
+
+.detail-daily-wrap {
+  background-color: var(--surface);
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-daily {
+  display: grid;
+  grid-template-columns: repeat(var(--daily-cols, 7), 1fr);
+  gap: 4px;
+}
+
+.detail-daily-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 2px;
+  border-radius: 12px;
+  min-width: 0;
+}
+
+.detail-daily-cell.is-today {
+  background-color: var(--surface-2);
+}
+
+.detail-daily-weekday {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.detail-daily-icon {
+  width: 36px;
+  height: 36px;
+}
+
+.detail-daily-temps {
+  display: inline-flex;
+  gap: 4px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-daily-max {
+  color: var(--text);
+}
+
+.detail-daily-min {
+  color: var(--text-muted);
+}
