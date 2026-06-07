@@ -2,9 +2,18 @@
 //
 // A <button> so it is keyboard-accessible and announced as actionable by screen
 // readers. Three states:
-//   1. empty custom slot          → "Add a location" placeholder (no onTap)
+//   1. empty custom slot          → "Add a location" placeholder. Disabled
+//                                   unless `onAddRequest` is supplied
+//                                   (STORY-009 enables it so a tap focuses
+//                                   the search input).
 //   2. populated slot, forecast=null → "Unavailable" state (still tappable; detail shows nothing)
 //   3. populated slot + forecast  → full card
+//
+// STORY-009: populated CUSTOM slots get a small "×" remove button. Default
+// slots never do — they are env-baked and not user-removable per the issue
+// acceptance criteria. The remove handler calls `event.stopPropagation()`
+// so the card's main click (which opens the detail view) does not fire.
+//
 // All API-sourced strings are written via textContent — no innerHTML.
 
 import type { LocationSlot } from '../locations/types';
@@ -18,7 +27,26 @@ export interface CardItem {
   readonly forecast: OpenMeteoForecast | null;
 }
 
-export function renderLocationCard(item: CardItem, onTap: () => void): HTMLButtonElement {
+export interface CardOptions {
+  /**
+   * Called when the user taps an empty custom-slot placeholder. If absent,
+   * the empty placeholder is rendered as a disabled button (legacy behaviour
+   * pre-STORY-009).
+   */
+  readonly onAddRequest?: () => void;
+  /**
+   * Called when the user taps the "×" button on a populated custom slot.
+   * Ignored for default slots and empty placeholders. If absent, no remove
+   * button is rendered.
+   */
+  readonly onRemove?: () => void;
+}
+
+export function renderLocationCard(
+  item: CardItem,
+  onTap: () => void,
+  opts: CardOptions = {},
+): HTMLButtonElement {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'card';
@@ -32,8 +60,14 @@ export function renderLocationCard(item: CardItem, onTap: () => void): HTMLButto
     placeholder.className = 'card-placeholder';
     placeholder.textContent = '+ Add a location';
     button.appendChild(placeholder);
-    // Tapping an empty slot is a future story (STORY-009) — disable for now.
-    button.disabled = true;
+    if (opts.onAddRequest !== undefined) {
+      const onAddRequest = opts.onAddRequest;
+      button.addEventListener('click', () => onAddRequest());
+    } else {
+      // Legacy / pre-wired state — owner of the card hasn't supplied an
+      // add-request handler, so the placeholder is non-interactive.
+      button.disabled = true;
+    }
     return button;
   }
 
@@ -52,6 +86,7 @@ export function renderLocationCard(item: CardItem, onTap: () => void): HTMLButto
     status.textContent = 'Unavailable';
     header.appendChild(status);
     button.appendChild(header);
+    appendRemoveButton(button, slot, slot.location.name, opts.onRemove);
     button.addEventListener('click', onTap);
     return button;
   }
@@ -95,7 +130,46 @@ export function renderLocationCard(item: CardItem, onTap: () => void): HTMLButto
   body.appendChild(meta);
 
   button.appendChild(body);
-  button.setAttribute('aria-label', `${slot.location.name}, ${summary.label}, ${formatTemperature(forecast.current.temperature_2m)}`);
+  appendRemoveButton(button, slot, slot.location.name, opts.onRemove);
+  button.setAttribute(
+    'aria-label',
+    `${slot.location.name}, ${summary.label}, ${formatTemperature(forecast.current.temperature_2m)}`,
+  );
   button.addEventListener('click', onTap);
   return button;
+}
+
+/**
+ * Render the "×" remove button for a populated custom slot. No-op for
+ * default slots and for cases without an `onRemove` handler.
+ */
+function appendRemoveButton(
+  card: HTMLButtonElement,
+  slot: LocationSlot,
+  name: string,
+  onRemove: (() => void) | undefined,
+): void {
+  if (slot.kind !== 'custom' || slot.location === null || onRemove === undefined) {
+    return;
+  }
+  // A nested <button> inside a <button> is invalid HTML, so use a <span>
+  // with role="button". It still gets keyboard focus and stays accessible.
+  const remove = document.createElement('span');
+  remove.className = 'card-remove';
+  remove.setAttribute('role', 'button');
+  remove.setAttribute('tabindex', '0');
+  remove.setAttribute('aria-label', `Remove ${name}`);
+  remove.textContent = '×';
+  const handle = (event: Event): void => {
+    event.stopPropagation();
+    onRemove();
+  };
+  remove.addEventListener('click', handle);
+  remove.addEventListener('keydown', (event: KeyboardEvent) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handle(event);
+    }
+  });
+  card.appendChild(remove);
 }

@@ -24,6 +24,18 @@ export interface RenderAppOptions {
    * rendered — the header stays clean.
    */
   readonly lastUpdatedLabel?: string;
+  /**
+   * Called when the user taps an empty custom-slot placeholder
+   * (STORY-009). The owner of `renderApp` typically focuses the search
+   * widget input.
+   */
+  readonly onAddRequest?: () => void;
+  /**
+   * Called when the user clicks the "×" button on a populated CUSTOM slot
+   * card (STORY-009). The argument is the card index in `items`. Default
+   * slots never invoke this — `renderLocationCard` enforces that.
+   */
+  readonly onRemove?: (slotIndex: number) => void;
 }
 
 export function renderApp(
@@ -32,7 +44,7 @@ export function renderApp(
   opts: RenderAppOptions = {},
 ): void {
   function showList(): void {
-    root.replaceChildren(buildListView(items, opts, showDetailFor));
+    root.replaceChildren(buildListView(items, showDetailFor, opts));
   }
 
   function showDetailFor(index: number): void {
@@ -53,8 +65,8 @@ export function renderApp(
 
 function buildListView(
   items: ReadonlyArray<AppItem>,
-  opts: RenderAppOptions,
   onTap: (index: number) => void,
+  opts: RenderAppOptions,
 ): HTMLElement {
   const view = document.createElement('div');
   view.className = 'list-view';
@@ -83,7 +95,22 @@ function buildListView(
     const item = items[i];
     if (item === undefined) continue; // noUncheckedIndexedAccess guard
     const index = i;
-    const card = renderLocationCard(item, () => onTap(index));
+    // Wire the per-card callbacks based on slot kind. The card module
+    // ignores `onRemove` for default slots, but only invoking it for
+    // custom slots keeps the wiring obvious from this layer too.
+    const cardOpts: {
+      onAddRequest?: () => void;
+      onRemove?: () => void;
+    } = {};
+    if (item.slot.location === null && opts.onAddRequest !== undefined) {
+      const onAddRequest = opts.onAddRequest;
+      cardOpts.onAddRequest = (): void => onAddRequest();
+    }
+    if (item.slot.kind === 'custom' && item.slot.location !== null && opts.onRemove !== undefined) {
+      const onRemove = opts.onRemove;
+      cardOpts.onRemove = (): void => onRemove(index);
+    }
+    const card = renderLocationCard(item, () => onTap(index), cardOpts);
     main.appendChild(card);
   }
   view.appendChild(main);

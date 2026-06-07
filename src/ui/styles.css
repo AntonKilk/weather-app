@@ -244,6 +244,55 @@ body {
   text-align: center;
 }
 
+/* Custom-slot remove button (STORY-009) ------------------------------------*/
+
+.card {
+  position: relative;
+}
+
+.card-remove {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text-muted);
+  background-color: rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.card-remove:hover,
+.card-remove:focus-visible {
+  color: var(--text);
+  outline: 2px solid var(--accent-cool);
+  outline-offset: 1px;
+}
+
+/* Location search container (STORY-008 / STORY-009) -----------------------*/
+
+.location-search-container {
+  margin: 8px 0 16px;
+}
+
+.location-search-cap-note {
+  margin: 8px 4px 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  min-height: 1em;
+}
+
+.location-search__input[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Weather icon palette -----------------------------------------------------*/
 
 .weather-icon .icon-warm {
