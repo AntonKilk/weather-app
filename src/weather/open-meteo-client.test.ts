@@ -71,7 +71,7 @@ describe('fetchForecast — happy path', () => {
       // Current block
       expect(result.data.current.temperature_2m).toBe(19.0);
       expect(result.data.current.wind_speed_10m).toBe(4.5);
-      expect(result.data.current_units.wind_speed_10m).toBe('m/s');
+      expect(result.data.current_units?.wind_speed_10m).toBe('m/s');
       // Hourly arrays aligned
       expect(result.data.hourly.time.length).toBe(24);
       expect(result.data.hourly.temperature_2m.length).toBe(24);

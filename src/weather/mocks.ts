@@ -62,6 +62,7 @@ const CURRENT_UNITS = {
   interval: 'seconds',
   temperature_2m: '°C',
   relative_humidity_2m: '%',
+  precipitation: 'mm',
   weather_code: 'wmo code',
   wind_speed_10m: 'm/s',
 } as const;
@@ -103,6 +104,7 @@ function build(seed: MockSeed): OpenMeteoForecast {
       interval: 900,
       temperature_2m: seed.currentTemp,
       relative_humidity_2m: seed.humidity,
+      precipitation: 0,
       weather_code: seed.weatherCode,
       wind_speed_10m: seed.wind,
     },
