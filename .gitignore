@@ -1,1 +1,23 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.vite/
+
+# Test artifacts
+coverage/
+
+# Environment files — default locations live here, never commit
+.env
+.env.local
+.env.*.local
+
+# Logs / OS / editor
+*.log
+.DS_Store
+.idea/
+.vscode/
+
+# Agent worktrees (subagent scratch)
 .claude/worktrees/
