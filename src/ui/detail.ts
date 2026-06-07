@@ -1,13 +1,27 @@
 // Per-location detail view.
 //
-// Phase-1 placeholder: shows the header (name + current conditions) and reserves
-// a slot for the hourly SVG chart + 7-day forecast that STORY-003 will render.
-// The "Back" button returns to the list; no router, no URL state.
+// Layout (mobile, single column):
+//   [Back]
+//   [Header card: name • current icon • current temp • label • humidity • wind]
+//   [Hourly chart card: 24-h SVG curve + precipitation row]
+//   [Daily strip card: 7 weekday cells with icon + max/min]
+//
+// All API-sourced strings are written via `textContent`; SVGs are built with
+// `createElementNS` only (CLAUDE.md › Security). One bad input must not blank
+// the whole view: chart/strip construction is wrapped in try/catch so the
+// header survives even if `hourly` or `daily` are malformed.
 
 import type { LocationSlot } from '../locations/types';
 import type { OpenMeteoForecast } from '../weather/types';
 import { describeWeatherCode } from '../weather/wmo';
+import { renderDailyStrip } from './daily-strip';
 import { formatHumidity, formatTemperature, formatWind } from './format';
+import {
+  projectHourlyChart,
+  renderHourlyChart,
+  renderPrecipRow,
+  selectHourlySamples,
+} from './hourly-chart';
 import { createWeatherIcon } from './icons';
 
 export interface DetailItem {
@@ -28,16 +42,16 @@ export function renderLocationDetail(item: DetailItem, onBack: () => void): HTML
   section.appendChild(back);
 
   const { slot, forecast } = item;
+  const locationName = slot.location?.name ?? '';
   const summary = describeWeatherCode(forecast.current.weather_code);
 
+  // --- Header card ---------------------------------------------------------
   const header = document.createElement('header');
   header.className = 'detail-header';
 
   const name = document.createElement('h2');
   name.className = 'detail-name';
-  // slot.location may be null only for empty custom slots; the caller filters
-  // those out before reaching here. Defensive check keeps TS happy.
-  name.textContent = slot.location?.name ?? '';
+  name.textContent = locationName;
   header.appendChild(name);
 
   const icon = createWeatherIcon(summary.icon, { size: 64, title: summary.label });
@@ -72,10 +86,65 @@ export function renderLocationDetail(item: DetailItem, onBack: () => void): HTML
 
   section.appendChild(header);
 
-  const placeholder = document.createElement('p');
-  placeholder.className = 'detail-placeholder';
-  placeholder.textContent = 'Hourly chart and 7-day forecast — coming in STORY-003.';
-  section.appendChild(placeholder);
+  // --- Hourly chart card ---------------------------------------------------
+  try {
+    const chartCard = document.createElement('section');
+    chartCard.className = 'detail-chart';
+
+    const chartTitle = document.createElement('h3');
+    chartTitle.className = 'detail-chart-title';
+    chartTitle.textContent = 'Next 24 hours';
+    chartCard.appendChild(chartTitle);
+
+    const samples = selectHourlySamples(forecast.hourly, 8);
+    const geometry = projectHourlyChart(samples);
+    if (geometry.points.length >= 2) {
+      const chartLabel = locationName !== ''
+        ? `Hourly temperature for ${locationName}`
+        : 'Hourly temperature';
+      chartCard.appendChild(renderHourlyChart(geometry, { ariaLabel: chartLabel }));
+      chartCard.appendChild(renderPrecipRow(geometry));
+    } else {
+      const fallback = document.createElement('p');
+      fallback.className = 'detail-chart-fallback';
+      fallback.textContent = 'Hourly data unavailable.';
+      chartCard.appendChild(fallback);
+    }
+
+    section.appendChild(chartCard);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[detail] failed to render chart for ${locationName}`, err);
+    const fallback = document.createElement('p');
+    fallback.className = 'detail-chart-fallback';
+    fallback.textContent = 'Could not render the chart.';
+    section.appendChild(fallback);
+  }
+
+  // --- 7-day strip card ----------------------------------------------------
+  try {
+    const dailyCard = document.createElement('section');
+    dailyCard.className = 'detail-daily-wrap';
+
+    const dailyTitle = document.createElement('h3');
+    dailyTitle.className = 'detail-daily-title';
+    dailyTitle.textContent = 'Next 7 days';
+    dailyCard.appendChild(dailyTitle);
+
+    const todayIso = typeof forecast.current.time === 'string'
+      ? forecast.current.time.slice(0, 10)
+      : undefined;
+    dailyCard.appendChild(renderDailyStrip(forecast.daily, todayIso));
+
+    section.appendChild(dailyCard);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[detail] failed to render daily strip for ${locationName}`, err);
+    const fallback = document.createElement('p');
+    fallback.className = 'detail-chart-fallback';
+    fallback.textContent = 'Could not render the daily forecast.';
+    section.appendChild(fallback);
+  }
 
   return section;
 }
