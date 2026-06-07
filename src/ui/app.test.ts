@@ -4,7 +4,7 @@
 // locations, asserts the list view, simulates a tap on a card, asserts the
 // detail view appears, then taps Back and asserts the list returns.
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { MOCK_DEFAULT_LOCATIONS } from '../locations/defaults';
 import type { LocationSlot } from '../locations/types';
 import { pickForecastForName } from '../weather/mocks';
@@ -122,5 +122,50 @@ describe('renderApp (UI skeleton smoke)', () => {
     expect(card?.classList.contains('card--empty')).toBe(true);
     expect((card as HTMLButtonElement).disabled).toBe(true);
     expect(card?.textContent).toContain('Add a location');
+  });
+
+  // -------------------------------------------------------------------------
+  // STORY-009: add-request and remove callbacks
+  // -------------------------------------------------------------------------
+
+  it('fires onAddRequest when an empty custom card is tapped', () => {
+    const root = document.createElement('div');
+    const items: ReadonlyArray<AppItem> = [
+      { slot: { kind: 'custom', location: null }, forecast: null },
+    ];
+    const onAddRequest = vi.fn();
+    renderApp(root, items, { onAddRequest });
+
+    const card = root.querySelector('button.card') as HTMLButtonElement | null;
+    expect(card).not.toBeNull();
+    expect(card?.disabled).toBe(false);
+    card?.click();
+    expect(onAddRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it('fires onRemove with the card index when × is clicked on a custom slot', () => {
+    const root = document.createElement('div');
+    const items: ReadonlyArray<AppItem> = [
+      {
+        slot: {
+          kind: 'default',
+          location: MOCK_DEFAULT_LOCATIONS[0] ?? { name: 'X', lat: 0, lon: 0 },
+        },
+        forecast: null,
+      },
+      {
+        slot: { kind: 'custom', location: { name: 'Custom', lat: 1, lon: 1 } },
+        forecast: null,
+      },
+    ];
+    const onRemove = vi.fn();
+    renderApp(root, items, { onRemove });
+
+    const removeBtns = root.querySelectorAll('.card-remove');
+    // Only the custom card gets a remove button.
+    expect(removeBtns.length).toBe(1);
+    (removeBtns[0] as HTMLElement).click();
+    expect(onRemove).toHaveBeenCalledTimes(1);
+    expect(onRemove).toHaveBeenCalledWith(1);
   });
 });

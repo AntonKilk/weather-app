@@ -26,6 +26,7 @@
 import './ui/styles.css';
 import { parseDefaultLocations } from './locations/env';
 import {
+  MAX_CUSTOM_SLOTS,
   createCustomSlotStore,
   type CustomSlotStore,
 } from './locations/custom-slots';
@@ -87,6 +88,29 @@ export async function bootstrap(root: HTMLElement, opts: BootstrapOptions = {}):
 
   const customStore = opts.customSlotStore ?? createCustomSlotStore();
 
+  // The search widget is owned by `mountSearchWidget` below; we keep a
+  // reference here so the renderer can focus its input when the user taps
+  // an empty placeholder card, and so we can flip its disabled state when
+  // the cap is reached.
+  let searchInput: HTMLInputElement | null = null;
+  let searchCapNote: HTMLElement | null = null;
+
+  function focusSearchInput(): void {
+    if (searchInput === null) return;
+    searchInput.focus();
+    searchInput.select();
+  }
+
+  function refreshSearchCapUI(): void {
+    if (searchInput === null || searchCapNote === null) return;
+    const canAdd = customStore.canAdd();
+    searchInput.disabled = !canAdd;
+    searchInput.setAttribute('aria-disabled', String(!canAdd));
+    searchCapNote.textContent = canAdd
+      ? ''
+      : `${MAX_CUSTOM_SLOTS} of ${MAX_CUSTOM_SLOTS} custom slots in use`;
+  }
+
   // Render closure — captures `root`, `defaults`, and the fetch impl. Re-runs
   // whenever the custom-slot store changes (add / remove / clear) so the grid
   // stays in sync with persistence.
@@ -94,14 +118,30 @@ export async function bootstrap(root: HTMLElement, opts: BootstrapOptions = {}):
     const customs = customStore.list();
     const slots = buildSlots(defaults, customs);
     const items = await fetchAllForecasts(slots, opts.fetchImpl);
-    renderApp(root, items);
+    renderApp(root, items, {
+      onAddRequest: focusSearchInput,
+      onRemove: (slotIndex) => {
+        // Map grid index back to the custom-store index. Defaults occupy
+        // [0, defaults.length); custom slots start at defaults.length.
+        const customIndex = slotIndex - defaults.length;
+        if (customIndex < 0 || customIndex >= customStore.list().length) {
+          // Defensive — UI never offers `onRemove` for default or empty
+          // slots, but a malformed call must not crash bootstrap.
+          // eslint-disable-next-line no-console
+          console.warn(`[main] ignoring out-of-range remove for slot index ${slotIndex}`);
+          return;
+        }
+        customStore.remove(customIndex);
+      },
+    });
+    refreshSearchCapUI();
   };
 
   // Mount the geocoding search widget (production wiring only — tests opt in).
   if (opts.mountSearchWidget === true) {
-    mountSearchWidget(root, customStore, () => {
-      void renderNow();
-    });
+    const mounted = mountSearchWidget(root, customStore);
+    searchInput = mounted.input;
+    searchCapNote = mounted.capNote;
   }
 
   // Re-render on every store change. The store calls subscribers synchronously
@@ -132,8 +172,7 @@ function buildSlots(
   }
   // Padding empty custom slots keeps the layout stable until the user fills
   // them. The UI renders a "Add a location" placeholder for the null case.
-  const cap = 2;
-  for (let i = 0; i < cap; i += 1) {
+  for (let i = 0; i < MAX_CUSTOM_SLOTS; i += 1) {
     const location = customs[i] ?? null;
     slots.push({ kind: 'custom', location });
   }
@@ -182,18 +221,23 @@ function extractForecast(
   return result.data;
 }
 
+interface MountedSearchWidget {
+  readonly input: HTMLInputElement | null;
+  readonly capNote: HTMLElement;
+}
+
 /**
  * Mount the autocomplete widget into a stable container under `#app`.
  *
  * The widget container lives outside the slot grid so the grid's re-render
  * (replaceChildren on the grid root) does not blow it away. We attach it
  * lazily on first call.
+ *
+ * Returns handles to the input (so the empty-card → "focus search" flow
+ * works) and the cap note (so the renderer can show "2 of 2 custom slots
+ * in use" when the user has filled both).
  */
-function mountSearchWidget(
-  root: HTMLElement,
-  store: CustomSlotStore,
-  onAdd: () => void,
-): void {
+function mountSearchWidget(root: HTMLElement, store: CustomSlotStore): MountedSearchWidget {
   let container = document.getElementById('location-search');
   if (container === null) {
     container = document.createElement('section');
@@ -218,10 +262,21 @@ function mountSearchWidget(
       }
       // eslint-disable-next-line no-console
       console.info(`[main] custom slot added: ${selection.name}`);
-      onAdd();
     },
   });
-  container.append(widget.element);
+
+  const capNote = document.createElement('p');
+  capNote.className = 'location-search-cap-note';
+  capNote.setAttribute('role', 'status');
+  capNote.setAttribute('aria-live', 'polite');
+
+  container.append(widget.element, capNote);
+
+  const input = widget.element.querySelector(
+    'input.location-search__input',
+  ) as HTMLInputElement | null;
+
+  return { input, capNote };
 }
 
 // ---------------------------------------------------------------------------
