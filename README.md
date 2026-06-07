@@ -52,3 +52,9 @@ locations to the repo. Wiring lands in a later story.
 
 Weather and geocoding via [Open-Meteo](https://open-meteo.com) — free, keyless,
 CC-BY 4.0 (attribution required in the UI footer).
+
+## Deploy
+
+Production hosts on Cloudflare Pages. See [`DEPLOY.md`](./DEPLOY.md) for build
+settings, the `VITE_DEFAULT_LOCATIONS` env shape, and the iPhone install
+checklist.
