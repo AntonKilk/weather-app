@@ -16,9 +16,23 @@ export interface AppItem {
   readonly forecast: OpenMeteoForecast | null;
 }
 
-export function renderApp(root: HTMLElement, items: ReadonlyArray<AppItem>): void {
+export interface RenderAppOptions {
+  /**
+   * Optional "Updated N ago" stamp rendered in the list view header. The
+   * caller computes this string from the oldest `fetchedAt` across slots
+   * (see `src/storage/freshness.ts`). When omitted/empty, no stamp is
+   * rendered — the header stays clean.
+   */
+  readonly lastUpdatedLabel?: string;
+}
+
+export function renderApp(
+  root: HTMLElement,
+  items: ReadonlyArray<AppItem>,
+  opts: RenderAppOptions = {},
+): void {
   function showList(): void {
-    root.replaceChildren(buildListView(items, showDetailFor));
+    root.replaceChildren(buildListView(items, opts, showDetailFor));
   }
 
   function showDetailFor(index: number): void {
@@ -39,6 +53,7 @@ export function renderApp(root: HTMLElement, items: ReadonlyArray<AppItem>): voi
 
 function buildListView(
   items: ReadonlyArray<AppItem>,
+  opts: RenderAppOptions,
   onTap: (index: number) => void,
 ): HTMLElement {
   const view = document.createElement('div');
@@ -49,6 +64,17 @@ function buildListView(
   const title = document.createElement('h1');
   title.textContent = 'Weather';
   header.appendChild(title);
+
+  // CLAUDE.md > Error handling: "Showing stale data" is a normal state. The
+  // freshness stamp is a quiet indicator, not an error overlay.
+  const label = opts.lastUpdatedLabel;
+  if (typeof label === 'string' && label.length > 0) {
+    const stamp = document.createElement('p');
+    stamp.className = 'last-updated';
+    stamp.textContent = label;
+    header.appendChild(stamp);
+  }
+
   view.appendChild(header);
 
   const main = document.createElement('main');

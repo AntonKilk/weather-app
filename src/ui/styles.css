@@ -272,3 +272,12 @@ body {
   stroke: var(--accent-rain);
   fill: none;
 }
+
+/* STORY-007: "Updated N ago" freshness stamp in the list header. Quiet —
+ * stale data is a normal state, not an error overlay. */
+.last-updated {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 0.2px;
+}

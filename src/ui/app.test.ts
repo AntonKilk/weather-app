@@ -110,6 +110,28 @@ describe('renderApp (UI skeleton smoke)', () => {
     expect(root.querySelector('main.list')).not.toBeNull();
   });
 
+  it('renders the "Updated N ago" freshness stamp when a label is provided', () => {
+    const root = document.createElement('div');
+    renderApp(root, buildItems(), { lastUpdatedLabel: 'Updated 5m ago' });
+
+    const stamp = root.querySelector('.app-header .last-updated');
+    expect(stamp?.textContent).toBe('Updated 5m ago');
+  });
+
+  it('omits the freshness stamp when no label is provided', () => {
+    const root = document.createElement('div');
+    renderApp(root, buildItems());
+
+    expect(root.querySelector('.last-updated')).toBeNull();
+  });
+
+  it('omits the freshness stamp when label is an empty string', () => {
+    const root = document.createElement('div');
+    renderApp(root, buildItems(), { lastUpdatedLabel: '' });
+
+    expect(root.querySelector('.last-updated')).toBeNull();
+  });
+
   it('renders an empty custom slot as a disabled "+ Add a location" placeholder', () => {
     const root = document.createElement('div');
     const items: ReadonlyArray<AppItem> = [
