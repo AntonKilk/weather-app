@@ -1,0 +1,494 @@
+/* Mobile-first styles for the Phase-1 weather UI.
+ * Target: 390x844 (iPhone). No horizontal scroll, large tap targets,
+ * safe-area insets respected, system font stack only (no web fonts). */
+
+:root {
+  --bg: #0b1726;
+  --surface: #142235;
+  --surface-2: #1c2d44;
+  --text: #f4f6fb;
+  --text-muted: #aab3c5;
+  --accent-warm: #f5c453; /* sun, lightning */
+  --accent-cool: #d9e2f0; /* cloud, snow */
+  --accent-rain: #6fa8ff; /* rain drops, streaks */
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+body {
+  min-height: 100dvh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+
+#app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+/* Header / footer ----------------------------------------------------------*/
+
+.app-header {
+  padding: 8px 4px 16px;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.app-footer {
+  margin-top: 24px;
+  padding: 16px 4px 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.app-footer a {
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* List of cards ------------------------------------------------------------*/
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  padding: 16px;
+  background-color: var(--surface);
+  border: none;
+  border-radius: 18px;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  width: 100%;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 80ms ease;
+}
+
+.card:active {
+  transform: scale(0.99);
+}
+
+.card--empty {
+  background-color: transparent;
+  border: 1.5px dashed var(--text-muted);
+  box-shadow: none;
+  color: var(--text-muted);
+  justify-content: center;
+  align-items: center;
+  min-height: 80px;
+}
+
+.card-header {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.card-name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.card-temp {
+  font-size: 32px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.card-status {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.card-body {
+  display: grid;
+  gap: 4px;
+}
+
+.card-label {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.card-meta {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr;
+  gap: 4px 8px;
+  font-size: 13px;
+}
+
+.card-meta dt {
+  color: var(--text-muted);
+}
+
+.card-meta dd {
+  margin: 0;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Detail view --------------------------------------------------------------*/
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detail-back {
+  align-self: flex-start;
+  background-color: transparent;
+  color: var(--text);
+  border: none;
+  padding: 8px 4px;
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.detail-header {
+  background-color: var(--surface);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.detail-name {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.detail-temp {
+  font-size: 40px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-label {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.detail-meta {
+  grid-column: 1 / -1;
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr;
+  gap: 4px 8px;
+  font-size: 14px;
+}
+
+.detail-meta dt {
+  color: var(--text-muted);
+}
+
+.detail-meta dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-placeholder {
+  padding: 20px;
+  border-radius: 18px;
+  background-color: var(--surface-2);
+  color: var(--text-muted);
+  margin: 0;
+  text-align: center;
+}
+
+/* Custom-slot remove button (STORY-009) ------------------------------------*/
+
+.card {
+  position: relative;
+}
+
+.card-remove {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text-muted);
+  background-color: rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.card-remove:hover,
+.card-remove:focus-visible {
+  color: var(--text);
+  outline: 2px solid var(--accent-cool);
+  outline-offset: 1px;
+}
+
+/* Location search container (STORY-008 / STORY-009) -----------------------*/
+
+.location-search-container {
+  margin: 8px 0 16px;
+}
+
+.location-search-cap-note {
+  margin: 8px 4px 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  min-height: 1em;
+}
+
+.location-search__input[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Weather icon palette -----------------------------------------------------*/
+
+.weather-icon .icon-warm {
+  fill: var(--accent-warm);
+}
+
+.weather-icon .icon-warm-stroke {
+  stroke: var(--accent-warm);
+  fill: none;
+}
+
+.weather-icon .icon-cool {
+  fill: var(--accent-cool);
+}
+
+.weather-icon .icon-cool-stroke {
+  stroke: var(--accent-cool);
+  fill: none;
+}
+
+.weather-icon .icon-cool-accent {
+  fill: var(--accent-rain);
+}
+
+.weather-icon .icon-cool-accent-stroke {
+  stroke: var(--accent-rain);
+  fill: none;
+}
+
+/* STORY-007: "Updated N ago" freshness stamp in the list header. Quiet —
+ * stale data is a normal state, not an error overlay. */
+.last-updated {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 0.2px;
+}
+
+/* Detail — hourly chart (STORY-003) -----------------------------------------*/
+
+.detail-chart {
+  background-color: var(--surface);
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-chart-title,
+.detail-daily-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.detail-chart-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.detail-chart-area {
+  fill: var(--accent-warm);
+  fill-opacity: 0.18;
+  stroke: none;
+}
+
+.detail-chart-line {
+  stroke: var(--accent-warm);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.detail-chart-label-temp {
+  fill: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-chart-label-time {
+  fill: var(--text-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-chart-fallback {
+  margin: 0;
+  padding: 12px;
+  border-radius: 12px;
+  background-color: var(--surface-2);
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 13px;
+}
+
+.detail-precip-row {
+  display: grid;
+  grid-template-columns: repeat(var(--precip-cols, 8), 1fr);
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.detail-precip-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.detail-precip-cell--empty {
+  /* Reserve the column so chart and row stay aligned. */
+  min-height: 1px;
+}
+
+.detail-precip-drop {
+  width: 10px;
+  height: 14px;
+  display: block;
+}
+
+.detail-precip-drop-shape {
+  fill: var(--accent-rain);
+}
+
+.detail-precip-mm,
+.detail-precip-prob {
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  text-align: center;
+}
+
+/* Detail — 7-day strip (STORY-003) ------------------------------------------*/
+
+.detail-daily-wrap {
+  background-color: var(--surface);
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-daily {
+  display: grid;
+  grid-template-columns: repeat(var(--daily-cols, 7), 1fr);
+  gap: 4px;
+}
+
+.detail-daily-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 2px;
+  border-radius: 12px;
+  min-width: 0;
+}
+
+.detail-daily-cell.is-today {
+  background-color: var(--surface-2);
+}
+
+.detail-daily-weekday {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.detail-daily-icon {
+  width: 36px;
+  height: 36px;
+}
+
+.detail-daily-temps {
+  display: inline-flex;
+  gap: 4px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-daily-max {
+  color: var(--text);
+}
+
+.detail-daily-min {
+  color: var(--text-muted);
+}

@@ -1,0 +1,21 @@
+# Cloudflare Pages cache rules for the PWA shell.
+#
+# Service worker: must NOT be long-cached. vite-plugin-pwa is set to
+# `registerType: 'autoUpdate'` with `clientsClaim: true` (see vite.config.ts);
+# new SW versions must be discoverable on every reload, so we pin no-cache.
+/sw.js
+  Cache-Control: no-cache
+
+# Workbox runtime — emitted alongside sw.js (filename includes a hash but the
+# SW itself imports it; keep no-cache so the SW always pulls the matching one).
+/workbox-*.js
+  Cache-Control: no-cache
+
+# Manifest controls install metadata (name, icons, scope). Iterate freely.
+/manifest.webmanifest
+  Cache-Control: no-cache
+
+# Hashed assets emitted by Vite (filenames like `index-D0jJRZ0G.js`) are safe
+# to cache forever — the hash changes on every meaningful build.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

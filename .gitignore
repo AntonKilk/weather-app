@@ -1,1 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.vite/
+# vite-plugin-pwa dev cache (only written if devOptions.enabled is ever flipped on)
+dev-dist/
+
+# Test artifacts
+coverage/
+
+# Environment files — default locations live here, never commit
+.env
+.env.local
+.env.*.local
+
+# Logs / OS / editor
+*.log
+.DS_Store
+.idea/
+.vscode/
+
+# Agent worktrees (subagent scratch)
 .claude/worktrees/
