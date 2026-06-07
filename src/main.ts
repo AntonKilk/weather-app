@@ -1,20 +1,31 @@
-// Entry point — wiring only.
-// Real composition (locations, fetch, cache, UI) lands in later stories
-// per `.agents/PRDs/offline-weather-pwa.prd.md`.
+// Entry point — wiring only (CLAUDE.md › Architecture).
+//
+// Phase 1: hard-coded mock data per STORY-002. The real env-driven location list
+// and Open-Meteo client come in STORY-005 / STORY-004.
 
-const app = document.getElementById('app');
+import './ui/styles.css';
+import { MOCK_DEFAULT_LOCATIONS } from './locations/defaults';
+import type { LocationSlot } from './locations/types';
+import { renderApp, type AppItem } from './ui/app';
+import { pickForecastForName } from './weather/mocks';
 
-if (app === null) {
+const root = document.getElementById('app');
+
+if (root === null) {
   // Nothing to render into — log internally, do not throw in the page.
   // (CLAUDE.md › Observability: console at boundaries.)
   // eslint-disable-next-line no-console
   console.error('[main] #app root element not found in index.html');
 } else {
-  const heading = document.createElement('h1');
-  heading.textContent = 'Weather';
+  const slots: ReadonlyArray<LocationSlot> = MOCK_DEFAULT_LOCATIONS.map((location) => ({
+    kind: 'default',
+    location,
+  }));
 
-  const note = document.createElement('p');
-  note.textContent = 'Scaffold ready. Locations will appear here in upcoming stories.';
+  const items: ReadonlyArray<AppItem> = slots.map((slot) => ({
+    slot,
+    forecast: slot.location !== null ? pickForecastForName(slot.location.name) : null,
+  }));
 
-  app.append(heading, note);
+  renderApp(root, items);
 }
