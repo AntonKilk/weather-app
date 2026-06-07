@@ -180,7 +180,7 @@ Client-side app — keep it lightweight:
 | Setting | Value |
 |---------|-------|
 | Branch naming | `claude/issue-{N}-{slug}` |
-| PR policy | No PRs — owner opens them manually |
+| Publish policy | After `/implement` returns COMPLETE + verifier CONFIRMED, the implement command fast-forward merges the feature branch into `master` and pushes (Phase 6B). Never force-push, never merge-commit; if FF isn't possible, stop and surface the divergence. |
 | Max parallel | 3 |
 
 ### Hotspot files (never run two issues touching the same one concurrently)

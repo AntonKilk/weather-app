@@ -334,6 +334,56 @@ If all tasks in the plan are complete, call `mcp__github__issue_write` with:
 
 ---
 
+## Phase 6B: PUBLISH TO MASTER
+
+**This phase runs only when Phase 4.6 returned `CONFIRMED` and Phase 5 wrote a `COMPLETE` report.** Skip on `INCOMPLETE`/`REFUTED` runs — never publish broken work.
+
+The current branch (the designated feature branch — e.g. `claude/...`) is the source. Master is the target.
+
+### 6B.1 Push the feature branch
+
+```bash
+git push -u origin {current-branch}
+```
+
+(Retry up to 4 times with exponential backoff 2s/4s/8s/16s on network errors only, per the session's git-operations guidance. Never `--force`. Never `--no-verify`.)
+
+### 6B.2 Fast-forward merge into master
+
+```bash
+git fetch origin master
+git rev-list --left-right --count origin/master...{current-branch}
+```
+
+If the result is `0  N` (zero commits in master that aren't in the feature branch, N commits ahead) → fast-forward is safe; proceed:
+
+```bash
+git checkout master
+git merge --ff-only {current-branch}
+git push origin master
+git checkout {current-branch}
+```
+
+If the result shows master is ahead (`M  N` with M > 0) → fast-forward is NOT safe. STOP. Do not merge, do not rebase, do not force-anything. Report the divergence in the Phase 7 output ("master has M new commits since this branch diverged — needs rebase or manual merge") and ask the user how to proceed.
+
+**Rules of this phase**:
+
+- Only `--ff-only` merges. No merge commits, no rebases, no squashes.
+- Never `git push --force` or `git push --force-with-lease` to master.
+- Never bypass hooks (`--no-verify`).
+- Switch back to the feature branch at the end so the user's working state is preserved.
+
+### 6B.3 Confirm the publish
+
+```bash
+git rev-parse origin/master
+git rev-parse {current-branch}
+```
+
+Both should print the same SHA. Record that SHA in the Phase 7 output.
+
+---
+
 ## Phase 7: OUTPUT
 
 ```markdown
@@ -372,11 +422,15 @@ If all tasks in the plan are complete, call `mcp__github__issue_write` with:
 
 {If issue was updated: "Updated #ISSUE_NUMBER: added implementation comment, issue closed." Otherwise: "No GitHub Issue linked."}
 
+### Published
+
+- Feature branch `{branch}` pushed to origin
+- Fast-forward merged into `master` at `{sha}` (or: "BLOCKED — master diverged, needs manual resolution")
+
 ### Next Steps
 
 1. Review the report and the AC mapping
-2. Push the branch (the orchestrator handles this; standalone use: `git push -u origin {branch}`)
-3. Owner takes it from here per project policy (PRs, merges, deploys)
+2. Master is up to date — no further action needed unless the merge was blocked
 ```
 
 ---
@@ -391,3 +445,5 @@ If all tasks in the plan are complete, call `mcp__github__issue_write` with:
 | Build fails | Check error output, fix and re-run |
 | AC cannot be mapped to evidence | Implementation is incomplete — fix it. Do not paper over with "tests pass" or generic claims. If the AC is environment-blocked, mark `DEFERRED — owner` with the exact manual check. |
 | Verifier returns REFUTED | Fix every finding (including AC-mapping mismatches), re-run Phase 4, re-dispatch verifier (max 3 rounds, then report INCOMPLETE) |
+| Phase 6B FF-merge blocked (master diverged) | Do NOT rebase, force, or merge-commit. STOP, report the divergence + `git rev-list` output, and ask the user how to proceed |
+| Phase 6B `git push` fails (network) | Retry up to 4 times with exponential backoff (2s/4s/8s/16s) on network errors only. Auth/permission errors → STOP and report |
