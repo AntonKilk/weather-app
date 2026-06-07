@@ -47,6 +47,12 @@ Load the plan file and extract:
 - **Validation Commands** - How to verify (cross-check with CLAUDE.md)
 - **GitHub Issue** - Check the plan's Metadata table for a GitHub Issue number (e.g., `#5`). If present, this issue will be updated after implementation is complete.
 
+### Load Acceptance Criteria
+
+If the plan's Metadata has a GitHub Issue number, fetch the issue with `mcp__github__issue_read` and extract every `- [ ]` bullet under the **Acceptance Criteria** section verbatim. These are your end-state checklist — Phase 4.5 will require concrete evidence for each one. Treat them as non-negotiable: if implementation makes any AC impossible, stop and surface NEEDS_INPUT rather than silently dropping it.
+
+If the plan has no linked issue but has its own Acceptance Criteria section, use that instead. If neither has AC, note it and skip Phase 4.5 (the report still gets a `## Acceptance Criteria` section saying "none defined").
+
 **If plan not found:**
 ```
 Error: Plan not found at $ARGUMENTS
@@ -169,7 +175,27 @@ this goes into the report as evidence.
 
 ---
 
-## Phase 4.5: INDEPENDENT VERIFICATION (second opinion)
+## Phase 4.5: ACCEPTANCE-CRITERIA MAPPING
+
+> **⚠️ Hard gate. If the plan is linked to a GitHub issue (or has its own AC), every acceptance criterion must map to concrete, verifiable evidence in your tree before you proceed.**
+
+Walk the AC list loaded in Phase 1. For each criterion, fill in:
+
+| # | Acceptance criterion (verbatim) | Evidence |
+|---|---|---|
+| 1 | {paste the AC string} | {file:line(s) implementing it; test name(s) exercising it; or manual command + observed output} |
+
+Rules:
+- One AC may map to multiple files / tests — list them all.
+- "Lint passes" / "tests pass" is NOT evidence on its own. Point at the specific test name(s) or code path; the reader must be able to click through.
+- If an AC genuinely can't run in this environment (e.g. iPhone install, deploy preview, real-device check), mark it `DEFERRED — owner` with the exact manual command/checklist, per CLAUDE.md defer-and-record. Silently skipping is not allowed.
+- If you can't honestly map an AC → STOP. Either fix the implementation, or escalate as NEEDS_INPUT with the unmapped AC quoted. Do NOT proceed to Phase 4.6 with an unmapped AC.
+
+Save this table — it goes into the report (Phase 5) and the issue comment (Phase 6) verbatim.
+
+---
+
+## Phase 4.6: INDEPENDENT VERIFICATION (second opinion)
 
 > **⚠️ Hard gate. You wrote this code — you do not get to be the one who signs it off.**
 
@@ -177,11 +203,10 @@ Dispatch the **`verifier`** subagent (fresh context, defined in `.claude/agents/
 via the `Agent` tool:
 
 - `subagent_type`: `verifier`
-- `prompt`: the plan path, the branch name, and the claimed status. Instruct it to try
-  to **refute** completeness and correctness.
+- `prompt`: the plan path, the branch name, the claimed status, AND the AC mapping table from Phase 4.5. Instruct the verifier to try to **refute** completeness and correctness AND to independently re-check each AC → evidence mapping (does the cited file:line actually implement that AC? does the cited test actually assert it?).
 
-The verifier independently re-runs validation and inspects the diff against the plan,
-then returns `VERDICT: CONFIRMED | REFUTED` with evidence.
+The verifier independently re-runs validation, inspects the diff against the plan,
+re-checks the AC mapping, and returns `VERDICT: CONFIRMED | REFUTED` with evidence.
 
 | Verdict | Action |
 |---------|--------|
@@ -232,6 +257,14 @@ mkdir -p .agents/reports
 ```
 {key lines of actual test/lint output — the evidence, not just the verdict}
 ```
+
+## Acceptance Criteria Mapping
+
+| # | Acceptance criterion (verbatim) | Evidence |
+|---|---|---|
+| 1 | {AC string} | {file:line, test name, or DEFERRED — owner with checklist} |
+
+(One row per AC from the linked issue / plan. "none defined" if neither source has AC.)
 
 ## Independent Verification
 
@@ -286,6 +319,7 @@ Call `mcp__github__add_issue_comment` with:
   - Branch name
   - Files created/updated (count)
   - Tests written (count)
+  - **The AC mapping table from Phase 4.5** (verbatim — one row per AC with evidence)
   - Any deviations from the plan
   - Link to the implementation report file path
 
@@ -316,6 +350,7 @@ If all tasks in the plan are complete, call `mcp__github__issue_write` with:
 | Type check | exit 0 |
 | Lint | exit 0 |
 | Tests | {N} passed |
+| AC mapping | {K}/{K} criteria mapped to evidence ({D} deferred) |
 | Independent verification | CONFIRMED (round {n}) |
 
 ### Files Changed
@@ -339,9 +374,9 @@ If all tasks in the plan are complete, call `mcp__github__issue_write` with:
 
 ### Next Steps
 
-1. Review the report
-2. Create PR: `gh pr create`
-3. Merge when approved
+1. Review the report and the AC mapping
+2. Push the branch (the orchestrator handles this; standalone use: `git push -u origin {branch}`)
+3. Owner takes it from here per project policy (PRs, merges, deploys)
 ```
 
 ---
@@ -354,4 +389,5 @@ If all tasks in the plan are complete, call `mcp__github__issue_write` with:
 | Tests fail | Fix implementation or test, re-run |
 | Lint fails | Run lint --fix if supported, then manual fixes |
 | Build fails | Check error output, fix and re-run |
-| Verifier returns REFUTED | Fix every finding, re-run Phase 4, re-dispatch verifier (max 3 rounds, then report INCOMPLETE) |
+| AC cannot be mapped to evidence | Implementation is incomplete — fix it. Do not paper over with "tests pass" or generic claims. If the AC is environment-blocked, mark `DEFERRED — owner` with the exact manual check. |
+| Verifier returns REFUTED | Fix every finding (including AC-mapping mismatches), re-run Phase 4, re-dispatch verifier (max 3 rounds, then report INCOMPLETE) |
