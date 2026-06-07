@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "emitDeclarationOnly": true,
+    "outDir": "./node_modules/.cache/tsc-node",
+    "types": []
+  },
+  "include": ["vite.config.ts"]
+}
