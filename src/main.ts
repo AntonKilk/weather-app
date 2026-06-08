@@ -3,6 +3,7 @@ import { parseDefaultLocations } from './locations/default-locations';
 import { loadForecasts } from './weather/load-forecasts';
 import { renderFooter } from './ui/footer';
 import { renderHomeScreen } from './ui/home-screen';
+import { registerServiceWorker } from './sw/register';
 
 const app = document.getElementById('app');
 
@@ -13,6 +14,10 @@ if (app === null) {
 } else {
   void bootstrap(app);
 }
+
+// SW registration is independent of paint — never await, never block.
+// The wrapper logs lifecycle events and returns without throwing.
+registerServiceWorker();
 
 async function bootstrap(root: HTMLElement): Promise<void> {
   const parsed = parseDefaultLocations(import.meta.env.VITE_DEFAULT_LOCATIONS);

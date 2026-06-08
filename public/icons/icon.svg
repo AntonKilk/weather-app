@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Weather app icon">
+  <title>Weather</title>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b1726"/>
+      <stop offset="1" stop-color="#1e3a5f"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffd866"/>
+      <stop offset="1" stop-color="#f7b500"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" ry="96" fill="url(#sky)"/>
+  <circle cx="328" cy="188" r="84" fill="url(#sun)"/>
+  <g fill="#f5f7fa">
+    <circle cx="184" cy="312" r="64"/>
+    <circle cx="248" cy="276" r="76"/>
+    <circle cx="316" cy="296" r="60"/>
+    <circle cx="356" cy="332" r="52"/>
+    <rect x="148" y="320" width="232" height="76" rx="38"/>
+  </g>
+</svg>
