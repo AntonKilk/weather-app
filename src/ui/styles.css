@@ -280,3 +280,30 @@ body {
 .daily-strip__max {
   color: var(--fg);
 }
+
+.app-loading,
+.app-empty {
+  margin: 24px 8px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.app-footer {
+  margin-top: 24px;
+  padding: 12px 4px 24px;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.app-footer__link {
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.app-footer__link:hover,
+.app-footer__link:focus-visible {
+  color: var(--fg);
+}

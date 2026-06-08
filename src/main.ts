@@ -1,6 +1,7 @@
 import './ui/styles.css';
-import { MOCK_LOCATIONS } from './locations/mock-locations';
-import { MOCK_FORECASTS } from './weather/mock-forecasts';
+import { parseDefaultLocations } from './locations/default-locations';
+import { loadForecasts } from './weather/load-forecasts';
+import { renderFooter } from './ui/footer';
 import { renderHomeScreen } from './ui/home-screen';
 
 const app = document.getElementById('app');
@@ -10,5 +11,36 @@ if (app === null) {
   // eslint-disable-next-line no-console
   console.error('[main] #app root element not found in index.html');
 } else {
-  app.replaceChildren(renderHomeScreen(MOCK_LOCATIONS, MOCK_FORECASTS));
+  void bootstrap(app);
+}
+
+async function bootstrap(root: HTMLElement): Promise<void> {
+  const parsed = parseDefaultLocations(import.meta.env.VITE_DEFAULT_LOCATIONS);
+  if (!parsed.ok) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[main] default locations unavailable: ${parsed.error.kind} — ${parsed.error.message}`,
+    );
+    root.replaceChildren(renderEmptyState('No default locations configured.'), renderFooter());
+    return;
+  }
+
+  const slots = parsed.data;
+  root.replaceChildren(renderLoading(), renderFooter());
+  const forecasts = await loadForecasts(slots);
+  root.replaceChildren(renderHomeScreen(slots, forecasts), renderFooter());
+}
+
+function renderLoading(): HTMLElement {
+  const el = document.createElement('p');
+  el.className = 'app-loading';
+  el.textContent = 'Loading weather…';
+  return el;
+}
+
+function renderEmptyState(message: string): HTMLElement {
+  const el = document.createElement('p');
+  el.className = 'app-empty';
+  el.textContent = message;
+  return el;
 }
