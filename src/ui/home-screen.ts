@@ -1,6 +1,6 @@
 import type { LocationSlot } from '../locations/types';
 import type { ForecastResponse } from '../weather/types';
-import { renderDetailPlaceholder } from './detail-view';
+import { renderDetailView } from './detail-view';
 import { renderDegradedCard, renderLocationCard } from './location-card';
 
 export function renderHomeScreen(
@@ -29,7 +29,7 @@ export function renderHomeScreen(
       card = renderDegradedCard(slot);
     }
 
-    const detail = renderDetailPlaceholder(slot);
+    const detail = renderDetailView(slot, forecast);
     card.setAttribute('aria-controls', detail.id);
 
     bySlot.set(slot.id, { card, detail });

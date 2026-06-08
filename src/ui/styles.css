@@ -145,22 +145,138 @@ body {
   flex-shrink: 0;
 }
 
-.detail-placeholder {
+.location-detail {
   padding: 14px 16px;
   margin: -4px 4px 4px;
   background: var(--card-bg);
-  border: 1px dashed var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  color: var(--muted);
+  color: var(--fg);
   font-size: 0.85rem;
 }
 
-.detail-placeholder__heading {
-  margin: 0 0 4px;
+.location-detail__title {
+  margin: 0 0 10px;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--fg);
 }
 
-.detail-placeholder__note {
+.location-detail__empty,
+.location-detail__fallback {
   margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.location-detail__chart {
+  margin-bottom: 6px;
+}
+
+.hourly-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.hourly-chart__line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.hourly-chart__fill {
+  fill: var(--accent);
+  fill-opacity: 0.18;
+  stroke: none;
+}
+
+.hourly-chart__value {
+  font-size: 11px;
+  fill: var(--fg);
+  font-weight: 600;
+}
+
+.hourly-chart__time {
+  font-size: 11px;
+  fill: var(--muted);
+}
+
+.precip-row {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 8), 1fr);
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.precip-row__cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 18px;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.precip-row__label {
+  white-space: nowrap;
+}
+
+.daily-strip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  gap: 4px;
+}
+
+.daily-strip--empty {
+  display: block;
+}
+
+.daily-strip__fallback {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.daily-strip__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 2px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+
+.daily-strip__cell--today {
+  background: rgba(247, 181, 0, 0.12);
+  border-color: var(--accent);
+}
+
+.daily-strip__day {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.daily-strip__cell .weather-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.daily-strip__temps {
+  display: flex;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.daily-strip__max {
+  color: var(--fg);
 }
