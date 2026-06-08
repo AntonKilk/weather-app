@@ -212,4 +212,24 @@ implementation.
 
 ## Re-verification (round 2)
 
-_Pending — verifier will be dispatched after this report is committed._
+**Verdict**: CONFIRMED. No new findings.
+
+Verifier evidence (round 2):
+
+```
+- npm run lint → exit 0; no output
+- npx tsc --noEmit → exit 0; no output
+- npm test → exit 0; 63 passed (7 test files) — matches round-1 output exactly
+- npm run build → exit 0; dist/assets/index-EXxpPREx.js 16.14 kB │ gzip: 5.05 kB,
+  dist/assets/index-BsDulWR2.css 3.50 kB │ gzip: 1.24 kB — identical to round-1
+  build (no source changes)
+- .agents/reports/detail-view-svg-chart-report.md — exists, 216 lines, committed
+  as 3abaa5b
+- AC mapping spot-checks: STEP_HOURS/TARGET_POINTS constants, buildChartGeometry,
+  shouldShowPrecip/precipLabel, renderHourlyChart viewBox + preserveAspectRatio +
+  per-point value/time text, hourly-chart.test.ts y-range/inversion tests,
+  renderDailyStrip 7-cell <ul>, daily-strip.test.ts 5 cases — all resolve to the
+  cited file:line.
+- Round-1 non-blocking notes (formatWeekdayShort timezone edge case; plan's
+  pathD arithmetic) both acknowledged as transparency notes in the report.
+```
