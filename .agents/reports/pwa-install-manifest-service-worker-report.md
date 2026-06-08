@@ -150,7 +150,58 @@ Deferred-and-recorded items (CLAUDE.md › Sandbox-blocked checks):
 
 ## Independent Verification
 
-**Verdict**: pending verifier subagent (will append round result below).
+**Verdict**: CONFIRMED (round 1 of max 3)
+
+EVIDENCE (commands the verifier ran itself, verbatim):
+
+```
+- npm run lint → exit 0; no errors, no warnings
+- npx tsc --noEmit → exit 0; no type errors
+- npm test → exit 0; 12 test files, 119 tests passed (5 new in src/sw/register.test.ts + 114 prior)
+- VITE_DEFAULT_LOCATIONS='[{"name":"Sample","lat":0,"lon":0}]' npm run build → exit 0;
+  dist/sw.js + dist/manifest.webmanifest + dist/icons/* all present;
+  16 precache entries / 78.49 KiB
+- manifest content gate (node JSON.parse) → "manifest OK"; display=standalone,
+  icons 192x192 + 512x512 any + 512x512 maskable all present
+- dist/index.html head checks: rel="manifest" OK, rel="apple-touch-icon" OK,
+  apple-mobile-web-app-capable OK, apple-mobile-web-app-title OK,
+  apple-mobile-web-app-status-bar-style OK, theme-color OK,
+  registerSW NOT injected (OK — injectRegister:false honoured)
+- file public/icons/icon-192.png → 192 x 192 OK
+- file public/icons/icon-512.png → 512 x 512 OK
+- file public/icons/icon-maskable-512.png → 512 x 512 OK
+- file public/icons/apple-touch-icon.png → 180 x 180 OK
+- grep (Lahti|Helsinki|Tallinn|Käsmu) over src/sw/, index.html, vite.config.ts,
+  public/, .env.example → no matches
+- grep cross-domain imports in src/sw/ → no matches (layering clean)
+- Playwright runtime check against npm run preview (port 5173):
+  - SW={"registered":true,"scope":"http://127.0.0.1:5173/",
+        "active_url":"http://127.0.0.1:5173/sw.js"}
+  - console logs contain
+    info:[sw] registered /sw.js
+    info:[sw] offline-ready: app shell precached
+  - Page.getAppManifest.errors=[]
+  - Page.getInstallabilityErrors → {"installabilityErrors":[]}
+  - OFFLINE probe (setOffline+reload): {"title":"Weather","app":true,
+                                        "footer":true,"manifest_link":true}
+  - OFFLINE manifest fetch status = 200 (served from SW cache)
+```
+
+Verifier notes (additive refinements, not deviations):
+
+- The `{ kind: 'unsupported' }` variant carries an extra `reason: string`
+  field beyond the plan's public-contract snippet. All tests assert it
+  and TypeScript is happy — additive only.
+- `navigateFallbackDenylist` uses `/^https?:\/\//` instead of the
+  plan's `/^https:\/\//` — strictly more correct (covers both http and
+  https cross-origin).
+
+UNVERIFIABLE (verifier-marked, defer-and-record per CLAUDE.md ›
+Sandbox-blocked checks):
+
+- Real-device iPhone Safari Add-to-Home-Screen + standalone open (AC2)
+- Real-device iPhone airplane-mode test of installed PWA (AC3 fully)
+- Lighthouse PWA audit on the deployed URL (STORY-010 deployment territory)
 
 ## E2E Evidence
 
