@@ -82,12 +82,25 @@ Verifier ran lint, typecheck, tests, build, architecture-invariant grep, innerHT
 
 Round-1 fix: this report file. The plan's Files-to-Change table and Task 10 explicitly list it as a deliverable; it was missing because Phase 5 of the implement skill runs after the verifier — strict reading of the plan caught the ordering. File now present.
 
-**Round 2** — VERDICT: CONFIRMED (see "Round 2 verifier evidence" below).
+**Round 2** — VERDICT: CONFIRMED.
 
 ### Round 2 verifier evidence
 
 ```
-{round 2 evidence will be filled in immediately below by the re-dispatched verifier}
+VERDICT: CONFIRMED
+
+EVIDENCE (commands the verifier ran itself):
+- npm run lint → exit 0; no errors, no warnings
+- npx tsc --noEmit → exit 0
+- npm test → exit 0; 17 test files, 214 tests passed
+- npm run build → exit 0; 35.34 kB JS, 4.99 kB CSS, SW generated
+- The cited line ranges in the AC mapping match exactly. The report's AC mapping is accurate.
+
+FINDINGS: none
+
+UNVERIFIABLE:
+- Live curl to geocoding-api.open-meteo.com — outbound network blocked in sandbox; deferred per CLAUDE.md
+- Real-device iPhone tap test — no device available in sandbox
 ```
 
 ## E2E Evidence
