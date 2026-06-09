@@ -1,0 +1,11 @@
+# Netlify build config for the offline weather PWA.
+# Cloudflare Pages users: ignore this file and set the same values
+# (build command, publish directory, NODE_VERSION) in the dashboard.
+# VITE_DEFAULT_LOCATIONS must be set in the hosting build env — never here.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
