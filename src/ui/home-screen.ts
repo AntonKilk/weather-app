@@ -4,11 +4,16 @@ import type { ForecastResponse } from '../weather/types';
 import { renderDetailView } from './detail-view';
 import { renderDegradedCard, renderLocationCard } from './location-card';
 
+export interface HomeScreenCallbacks {
+  onRemove?: (id: string) => void;
+}
+
 export function renderHomeScreen(
   slots: LocationSlot[],
   forecasts: Record<string, ForecastResponse>,
   lastUpdated?: Record<string, number | undefined>,
   nowMs: number = Date.now(),
+  callbacks?: HomeScreenCallbacks,
 ): HTMLElement {
   const main = document.createElement('main');
   main.className = 'locations-grid';
@@ -27,14 +32,14 @@ export function renderHomeScreen(
 
     try {
       if (forecast === undefined) {
-        card = renderDegradedCard(slot, stamp);
+        card = renderDegradedCard(slot, stamp, callbacks);
       } else {
-        card = renderLocationCard(slot, forecast, stamp);
+        card = renderLocationCard(slot, forecast, stamp, callbacks);
       }
     } catch (err) {
       // Per CLAUDE.md › Error handling: one bad slot must not break the others.
       console.error('[ui] failed to render slot', slot.id, err);
-      card = renderDegradedCard(slot, stamp);
+      card = renderDegradedCard(slot, stamp, callbacks);
     }
 
     const detail = renderDetailView(slot, forecast);

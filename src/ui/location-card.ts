@@ -4,10 +4,15 @@ import { wmoToCondition } from '../weather/wmo-codes';
 import { formatHumidity, formatTemperature, formatWind } from './format';
 import { renderIconSvg } from './icon';
 
+export interface LocationCardCallbacks {
+  onRemove?: (id: string) => void;
+}
+
 export function renderLocationCard(
   slot: LocationSlot,
   forecast: ForecastResponse,
   stamp?: string,
+  callbacks?: LocationCardCallbacks,
 ): HTMLElement {
   const condition = wmoToCondition(forecast.current.weather_code);
 
@@ -58,11 +63,16 @@ export function renderLocationCard(
     body.appendChild(renderUpdatedStamp(stamp));
   }
   card.appendChild(body);
+  appendRemoveButton(card, slot, callbacks);
 
   return card;
 }
 
-export function renderDegradedCard(slot: LocationSlot, stamp?: string): HTMLElement {
+export function renderDegradedCard(
+  slot: LocationSlot,
+  stamp?: string,
+  callbacks?: LocationCardCallbacks,
+): HTMLElement {
   const card = document.createElement('article');
   card.className = 'location-card location-card--degraded';
   card.dataset.slotId = slot.id;
@@ -89,6 +99,7 @@ export function renderDegradedCard(slot: LocationSlot, stamp?: string): HTMLElem
     body.appendChild(renderUpdatedStamp(stamp));
   }
   card.appendChild(body);
+  appendRemoveButton(card, slot, callbacks);
 
   return card;
 }
@@ -98,4 +109,27 @@ function renderUpdatedStamp(stamp: string): HTMLSpanElement {
   el.className = 'location-card__updated';
   el.textContent = stamp;
   return el;
+}
+
+function appendRemoveButton(
+  card: HTMLElement,
+  slot: LocationSlot,
+  callbacks: LocationCardCallbacks | undefined,
+): void {
+  if (slot.kind !== 'custom') return;
+  const onRemove = callbacks?.onRemove;
+  if (onRemove === undefined) return;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'location-card__remove';
+  button.setAttribute('aria-label', `Remove ${slot.name}`);
+  // Visible glyph is the multiplication sign — purely decorative.
+  button.textContent = '×';
+  button.addEventListener('click', (event) => {
+    // Without stopPropagation the home-screen's delegated card-click
+    // listener also fires and toggles the card open on remove.
+    event.stopPropagation();
+    onRemove(slot.id);
+  });
+  card.appendChild(button);
 }

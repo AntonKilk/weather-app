@@ -1,7 +1,16 @@
 import './ui/styles.css';
+import {
+  addCustomSlot,
+  canAddCustomSlot,
+  findExistingCustomSlot,
+  placeToSlot,
+  removeCustomSlot,
+} from './locations/custom-slots';
 import { parseDefaultLocations } from './locations/default-locations';
 import { searchGeocoding } from './locations/geocoding-client';
+import type { GeocodingPlace } from './locations/types';
 import type { LocationSlot } from './locations/types';
+import { createCustomSlotsStore } from './storage/custom-slots-store';
 import { createForecastCache, type CacheSnapshot } from './storage/forecast-cache';
 import { revalidate } from './storage/revalidate';
 import { REVALIDATE_THRESHOLD_MS, anyStale } from './storage/staleness';
@@ -27,31 +36,33 @@ if (app === null) {
 registerServiceWorker();
 
 async function bootstrap(root: HTMLElement): Promise<void> {
-  // Search input is mounted ONCE above the dynamic content so its focus,
-  // value, and in-progress AbortController survive every revalidate cycle.
-  // STORY-009 will replace `onSelect` with slot-fill logic.
-  const search = renderSearchInput({
-    searchGeocoding: (query, signal) => searchGeocoding(query, { signal }),
-    onSelect: (place) => {
-      console.info('[main] location selected (STORY-009 will use this):', place);
-    },
-  });
-  const content = document.createElement('div');
-  content.className = 'app-content';
-  root.replaceChildren(search, content);
-
   const parsed = parseDefaultLocations(import.meta.env.VITE_DEFAULT_LOCATIONS);
   if (!parsed.ok) {
     // eslint-disable-next-line no-console
     console.error(
       `[main] default locations unavailable: ${parsed.error.kind} — ${parsed.error.message}`,
     );
-    content.replaceChildren(renderEmptyState('No default locations configured.'), renderFooter());
+    root.replaceChildren(renderEmptyState('No default locations configured.'), renderFooter());
     return;
   }
+  const defaultSlots = parsed.data;
 
-  const slots = parsed.data;
   const cache = createForecastCache();
+  const slotsStore = createCustomSlotsStore();
+  const customRead = slotsStore.read();
+  let customSlots: LocationSlot[] = customRead.ok ? customRead.data : [];
+  if (
+    !customRead.ok &&
+    customRead.reason.kind !== 'absent' &&
+    customRead.reason.kind !== 'unsupported'
+  ) {
+    console.warn('[main] custom slots read failure:', customRead.reason);
+  }
+
+  const content = document.createElement('div');
+  content.className = 'app-content';
+  let searchEl = mountSearchOrNotice();
+  root.replaceChildren(searchEl, content);
 
   // First paint: render from cache before any network. < 2 s and works
   // offline. When the cache is empty (first launch), show the loading
@@ -61,13 +72,13 @@ async function bootstrap(root: HTMLElement): Promise<void> {
   if (Object.keys(snapshot).length === 0) {
     content.replaceChildren(renderLoading(), renderFooter());
   } else {
-    render(content, slots, snapshot);
+    renderGrid();
   }
 
   // Stale-while-revalidate: fetch in parallel, swap in fresh data.
-  const cycle = await revalidate(slots, { cache, fetchForecast, now: Date.now });
+  const cycle = await revalidate(mergedSlots(), { cache, fetchForecast, now: Date.now });
   snapshot = cycle.snapshot;
-  render(content, slots, snapshot);
+  renderGrid();
 
   // visibilitychange refresh: when the tab returns AND cache is older
   // than 30 min AND the browser is online, kick another revalidate
@@ -82,6 +93,7 @@ async function bootstrap(root: HTMLElement): Promise<void> {
     if (document.visibilityState !== 'visible') return;
     if (revalidating) return;
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+    const slots = mergedSlots();
     const slotIds = slots.map((s) => s.id);
     if (!anyStale(Date.now(), snapshot, slotIds, REVALIDATE_THRESHOLD_MS)) {
       return;
@@ -90,24 +102,113 @@ async function bootstrap(root: HTMLElement): Promise<void> {
     try {
       const next = await revalidate(slots, { cache, fetchForecast, now: Date.now });
       snapshot = next.snapshot;
-      render(content, slots, snapshot);
+      renderGrid();
     } finally {
       revalidating = false;
     }
   }
-}
 
-function render(content: HTMLElement, slots: LocationSlot[], snapshot: CacheSnapshot): void {
-  const forecasts: Record<string, ForecastResponse> = {};
-  const lastUpdated: Record<string, number | undefined> = {};
-  for (const [id, entry] of Object.entries(snapshot)) {
-    forecasts[id] = entry.forecast;
-    lastUpdated[id] = entry.fetchedAt;
+  function mergedSlots(): LocationSlot[] {
+    return [...defaultSlots, ...customSlots];
   }
-  content.replaceChildren(
-    renderHomeScreen(slots, forecasts, lastUpdated, Date.now()),
-    renderFooter(),
-  );
+
+  function renderGrid(): void {
+    content.replaceChildren(
+      renderHomeScreen(mergedSlots(), forecastsFromSnapshot(), lastUpdatedFromSnapshot(), Date.now(), {
+        onRemove: handleRemove,
+      }),
+      renderFooter(),
+    );
+  }
+
+  function forecastsFromSnapshot(): Record<string, ForecastResponse> {
+    const out: Record<string, ForecastResponse> = {};
+    for (const [id, entry] of Object.entries(snapshot)) {
+      out[id] = entry.forecast;
+    }
+    return out;
+  }
+
+  function lastUpdatedFromSnapshot(): Record<string, number | undefined> {
+    const out: Record<string, number | undefined> = {};
+    for (const [id, entry] of Object.entries(snapshot)) {
+      out[id] = entry.fetchedAt;
+    }
+    return out;
+  }
+
+  function mountSearchOrNotice(): HTMLElement {
+    if (canAddCustomSlot(customSlots)) {
+      return renderSearchInput({
+        searchGeocoding: (query, signal) => searchGeocoding(query, { signal }),
+        onSelect: (place) => {
+          void handleSelect(place);
+        },
+      });
+    }
+    const notice = document.createElement('p');
+    notice.className = 'custom-slots-full';
+    notice.textContent = 'Custom slots full — remove one to add another';
+    return notice;
+  }
+
+  function remountSearch(): void {
+    const next = mountSearchOrNotice();
+    root.replaceChild(next, searchEl);
+    searchEl = next;
+  }
+
+  async function handleSelect(place: GeocodingPlace): Promise<void> {
+    const placeResult = placeToSlot(place);
+    if (!placeResult.ok) {
+      console.warn('[custom-slots] place rejected:', placeResult.reason);
+      return;
+    }
+    const existing = findExistingCustomSlot(customSlots, place);
+    if (existing !== null) {
+      console.info('[custom-slots] duplicate; ignoring', existing.id);
+      return;
+    }
+    const addResult = addCustomSlot(customSlots, placeResult.slot);
+    if (!addResult.ok) {
+      console.warn('[custom-slots] add failed:', addResult.reason);
+      return;
+    }
+    customSlots = addResult.slots;
+    const writeResult = slotsStore.write(customSlots);
+    if (!writeResult.ok) {
+      console.warn('[custom-slots] persist failed:', writeResult.reason);
+      // Continue: in-memory add still wins until reload.
+    }
+    console.info('[custom-slots] added', placeResult.slot.id);
+    remountSearch();
+    renderGrid();
+    const next = await revalidate(mergedSlots(), { cache, fetchForecast, now: Date.now });
+    snapshot = next.snapshot;
+    renderGrid();
+  }
+
+  function handleRemove(id: string): void {
+    const before = customSlots.length;
+    customSlots = removeCustomSlot(customSlots, id);
+    if (customSlots.length === before) return;
+    const writeResult = slotsStore.write(customSlots);
+    if (!writeResult.ok) {
+      console.warn('[custom-slots] persist failed:', writeResult.reason);
+    }
+    const evict = cache.removeSlot(id);
+    if (!evict.ok) {
+      console.warn('[custom-slots] cache evict failed:', evict.reason);
+    }
+    // Drop the slot from the snapshot too so the next render doesn't
+    // show stale data for the removed card.
+    const nextSnapshot: CacheSnapshot = { ...snapshot };
+    delete nextSnapshot[id];
+    snapshot = nextSnapshot;
+    console.info('[custom-slots] removed', id);
+    remountSearch();
+    renderGrid();
+  }
 }
 
 function renderLoading(): HTMLElement {

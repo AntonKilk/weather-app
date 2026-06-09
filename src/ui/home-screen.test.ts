@@ -1,6 +1,8 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MOCK_LOCATIONS } from '../locations/mock-locations';
+import type { LocationSlot } from '../locations/types';
 import { MOCK_FORECASTS } from '../weather/mock-forecasts';
+import type { ForecastResponse } from '../weather/types';
 import { renderHomeScreen } from './home-screen';
 
 function mount(grid: HTMLElement): void {
@@ -150,6 +152,67 @@ describe('renderHomeScreen', () => {
     const stamp = degraded.querySelector('.location-card__updated');
     expect(stamp).not.toBeNull();
     expect(stamp?.textContent).toBe('Updated 2 h ago');
+  });
+
+  it('renders a remove button on each custom-kind slot when onRemove is provided', () => {
+    const baseForecast = MOCK_FORECASTS['mock-1']!;
+    const slots: LocationSlot[] = [
+      { id: 'default-0', name: 'Default A', latitude: 0, longitude: 0, kind: 'default' },
+      {
+        id: 'custom-60.0000-24.0000',
+        name: 'Custom A',
+        latitude: 60,
+        longitude: 24,
+        kind: 'custom',
+      },
+      {
+        id: 'custom-59.0000-24.0000',
+        name: 'Custom B',
+        latitude: 59,
+        longitude: 24,
+        kind: 'custom',
+      },
+    ];
+    const forecasts: Record<string, ForecastResponse> = {
+      'default-0': baseForecast,
+      'custom-60.0000-24.0000': baseForecast,
+      'custom-59.0000-24.0000': baseForecast,
+    };
+    const grid = renderHomeScreen(slots, forecasts, undefined, Date.now(), { onRemove: () => {} });
+    mount(grid);
+    const buttons = grid.querySelectorAll('button.location-card__remove');
+    expect(buttons.length).toBe(2);
+    const defaultCard = grid.querySelector<HTMLElement>('[data-slot-id="default-0"]')!;
+    expect(defaultCard.querySelector('button.location-card__remove')).toBeNull();
+  });
+
+  it('clicking remove on a custom card calls onRemove and does NOT expand the card', () => {
+    const baseForecast = MOCK_FORECASTS['mock-1']!;
+    const slots: LocationSlot[] = [
+      {
+        id: 'custom-60.0000-24.0000',
+        name: 'Custom A',
+        latitude: 60,
+        longitude: 24,
+        kind: 'custom',
+      },
+    ];
+    const forecasts: Record<string, ForecastResponse> = {
+      'custom-60.0000-24.0000': baseForecast,
+    };
+    const onRemove = vi.fn<(id: string) => void>();
+    const grid = renderHomeScreen(slots, forecasts, undefined, Date.now(), { onRemove });
+    mount(grid);
+    const card = grid.querySelector<HTMLElement>('.location-card')!;
+    const button = card.querySelector<HTMLButtonElement>('button.location-card__remove')!;
+
+    button.click();
+
+    expect(onRemove).toHaveBeenCalledTimes(1);
+    expect(onRemove).toHaveBeenCalledWith('custom-60.0000-24.0000');
+    expect(card.getAttribute('aria-expanded')).toBe('false');
+    const detail = document.getElementById(card.getAttribute('aria-controls')!) as HTMLElement;
+    expect(detail.hidden).toBe(true);
   });
 
   it('shows the empty-state message in the detail panel when a slot has no forecast', () => {
