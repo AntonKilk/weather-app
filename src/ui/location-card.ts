@@ -4,7 +4,11 @@ import { wmoToCondition } from '../weather/wmo-codes';
 import { formatHumidity, formatTemperature, formatWind } from './format';
 import { renderIconSvg } from './icon';
 
-export function renderLocationCard(slot: LocationSlot, forecast: ForecastResponse): HTMLElement {
+export function renderLocationCard(
+  slot: LocationSlot,
+  forecast: ForecastResponse,
+  stamp?: string,
+): HTMLElement {
   const condition = wmoToCondition(forecast.current.weather_code);
 
   const card = document.createElement('article');
@@ -50,12 +54,15 @@ export function renderLocationCard(slot: LocationSlot, forecast: ForecastRespons
 
   meta.append(humidity, wind);
   body.append(name, tempRow, meta);
+  if (stamp !== undefined && stamp !== '') {
+    body.appendChild(renderUpdatedStamp(stamp));
+  }
   card.appendChild(body);
 
   return card;
 }
 
-export function renderDegradedCard(slot: LocationSlot): HTMLElement {
+export function renderDegradedCard(slot: LocationSlot, stamp?: string): HTMLElement {
   const card = document.createElement('article');
   card.className = 'location-card location-card--degraded';
   card.dataset.slotId = slot.id;
@@ -78,7 +85,17 @@ export function renderDegradedCard(slot: LocationSlot): HTMLElement {
   status.textContent = 'No data';
 
   body.append(name, status);
+  if (stamp !== undefined && stamp !== '') {
+    body.appendChild(renderUpdatedStamp(stamp));
+  }
   card.appendChild(body);
 
   return card;
+}
+
+function renderUpdatedStamp(stamp: string): HTMLSpanElement {
+  const el = document.createElement('span');
+  el.className = 'location-card__updated';
+  el.textContent = stamp;
+  return el;
 }

@@ -307,3 +307,9 @@ body {
 .app-footer__link:focus-visible {
   color: var(--fg);
 }
+
+.location-card__updated {
+  margin-top: 4px;
+  font-size: 0.72rem;
+  color: var(--muted);
+}

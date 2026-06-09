@@ -1,20 +1,20 @@
-import type { ForecastResponse, CurrentWeather, HourlyForecast, DailyForecast } from './types';
+import type {
+  CurrentWeather,
+  DailyForecast,
+  FetchError,
+  FetchResult,
+  ForecastResponse,
+  HourlyForecast,
+} from './types';
 
 // Typed client for Open-Meteo's /v1/forecast endpoint. Single export point of
 // network failure: every error path returns a typed `FetchResult`, never
 // throws — so callers can `Promise.all` over 6 slots and one slot's failure
 // cannot poison the others (CLAUDE.md › Fault Tolerance, STORY-004 AC5).
+// `FetchResult`/`FetchError` live in `./types` — re-exported here for the
+// pre-existing callers that imported them from this module.
 
-export type FetchError =
-  | { kind: 'network'; message: string }
-  | { kind: 'timeout'; message: string }
-  | { kind: 'server'; status: number; message: string }
-  | { kind: 'client'; status: number; message: string }
-  | { kind: 'parse'; message: string };
-
-export type FetchResult<T> =
-  | { ok: true; data: T }
-  | { ok: false; error: FetchError };
+export type { FetchError, FetchResult } from './types';
 
 export interface ClientDeps {
   fetchImpl?: typeof fetch;

@@ -1,4 +1,5 @@
 import type { LocationSlot } from '../locations/types';
+import { formatLastUpdated } from '../storage/staleness';
 import type { ForecastResponse } from '../weather/types';
 import { renderDetailView } from './detail-view';
 import { renderDegradedCard, renderLocationCard } from './location-card';
@@ -6,6 +7,8 @@ import { renderDegradedCard, renderLocationCard } from './location-card';
 export function renderHomeScreen(
   slots: LocationSlot[],
   forecasts: Record<string, ForecastResponse>,
+  lastUpdated?: Record<string, number | undefined>,
+  nowMs: number = Date.now(),
 ): HTMLElement {
   const main = document.createElement('main');
   main.className = 'locations-grid';
@@ -16,17 +19,22 @@ export function renderHomeScreen(
   for (const slot of slots) {
     let card: HTMLElement;
     const forecast = forecasts[slot.id];
+    const fetchedAt = lastUpdated?.[slot.id];
+    const stamp =
+      typeof fetchedAt === 'number' && Number.isFinite(fetchedAt)
+        ? formatLastUpdated(nowMs, fetchedAt)
+        : undefined;
 
     try {
       if (forecast === undefined) {
-        card = renderDegradedCard(slot);
+        card = renderDegradedCard(slot, stamp);
       } else {
-        card = renderLocationCard(slot, forecast);
+        card = renderLocationCard(slot, forecast, stamp);
       }
     } catch (err) {
       // Per CLAUDE.md › Error handling: one bad slot must not break the others.
       console.error('[ui] failed to render slot', slot.id, err);
-      card = renderDegradedCard(slot);
+      card = renderDegradedCard(slot, stamp);
     }
 
     const detail = renderDetailView(slot, forecast);

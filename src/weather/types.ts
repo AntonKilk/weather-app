@@ -54,3 +54,20 @@ export interface WeatherCondition {
   description: string;
   iconKey: WeatherIconKey;
 }
+
+// Result discriminated-union shared by the Open-Meteo client and any
+// consumer that orchestrates calls to it (e.g. storage › revalidate).
+// Lives here — not in `open-meteo-client.ts` — so peer modules at
+// app-service altitude can import it without depending on the network
+// client (CLAUDE.md › Architecture).
+
+export type FetchError =
+  | { kind: 'network'; message: string }
+  | { kind: 'timeout'; message: string }
+  | { kind: 'server'; status: number; message: string }
+  | { kind: 'client'; status: number; message: string }
+  | { kind: 'parse'; message: string };
+
+export type FetchResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: FetchError };

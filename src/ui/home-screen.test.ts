@@ -112,6 +112,46 @@ describe('renderHomeScreen', () => {
     expect(strip.querySelectorAll('.daily-strip__cell').length).toBe(7);
   });
 
+  it('renders "Updated …" stamps on every card when lastUpdated is provided', () => {
+    const now = 1_700_000_000_000;
+    const lastUpdated: Record<string, number | undefined> = {};
+    for (const s of MOCK_LOCATIONS) {
+      lastUpdated[s.id] = now - 5 * 60 * 1000; // 5 min ago for all
+    }
+    const grid = renderHomeScreen(MOCK_LOCATIONS, MOCK_FORECASTS, lastUpdated, now);
+    mount(grid);
+    const stamps = grid.querySelectorAll('.location-card__updated');
+    expect(stamps.length).toBe(MOCK_LOCATIONS.length);
+    for (const s of stamps) {
+      expect(s.textContent).toBe('Updated 5 min ago');
+    }
+  });
+
+  it('omits stamps when lastUpdated is absent (back-compat with pre-STORY-007 callers)', () => {
+    const grid = renderHomeScreen(MOCK_LOCATIONS, MOCK_FORECASTS);
+    mount(grid);
+    expect(grid.querySelectorAll('.location-card__updated').length).toBe(0);
+  });
+
+  it('renders a stamp on a degraded card when the slot has a cached fetchedAt but no live forecast', () => {
+    const now = 1_700_000_000_000;
+    const partial: Record<string, (typeof MOCK_FORECASTS)[string]> = {
+      'mock-1': MOCK_FORECASTS['mock-1']!,
+      'mock-2': MOCK_FORECASTS['mock-2']!,
+      'mock-4': MOCK_FORECASTS['mock-4']!,
+    };
+    const lastUpdated: Record<string, number | undefined> = {
+      'mock-3': now - 2 * 60 * 60 * 1000, // 2 h ago
+    };
+    const grid = renderHomeScreen(MOCK_LOCATIONS, partial, lastUpdated, now);
+    mount(grid);
+    const degraded = grid.querySelector<HTMLElement>('.location-card--degraded')!;
+    expect(degraded.dataset.slotId).toBe('mock-3');
+    const stamp = degraded.querySelector('.location-card__updated');
+    expect(stamp).not.toBeNull();
+    expect(stamp?.textContent).toBe('Updated 2 h ago');
+  });
+
   it('shows the empty-state message in the detail panel when a slot has no forecast', () => {
     const partial: Record<string, (typeof MOCK_FORECASTS)[string]> = {
       'mock-1': MOCK_FORECASTS['mock-1']!,
