@@ -9,3 +9,15 @@ export interface LocationSlot {
   longitude: number;
   kind: 'default' | 'custom';
 }
+
+// A single hit from the Open-Meteo geocoding API. `country` and `admin1` are
+// optional because the API omits them for some results. STORY-009 will lift
+// this into a custom LocationSlot.
+
+export interface GeocodingPlace {
+  name: string;
+  latitude: number;
+  longitude: number;
+  country?: string;
+  admin1?: string;
+}

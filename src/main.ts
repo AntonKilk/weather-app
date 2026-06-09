@@ -1,5 +1,6 @@
 import './ui/styles.css';
 import { parseDefaultLocations } from './locations/default-locations';
+import { searchGeocoding } from './locations/geocoding-client';
 import type { LocationSlot } from './locations/types';
 import { createForecastCache, type CacheSnapshot } from './storage/forecast-cache';
 import { revalidate } from './storage/revalidate';
@@ -7,6 +8,7 @@ import { REVALIDATE_THRESHOLD_MS, anyStale } from './storage/staleness';
 import { registerServiceWorker } from './sw/register';
 import { renderFooter } from './ui/footer';
 import { renderHomeScreen } from './ui/home-screen';
+import { renderSearchInput } from './ui/search-input';
 import { fetchForecast } from './weather/open-meteo-client';
 import type { ForecastResponse } from './weather/types';
 
@@ -25,13 +27,26 @@ if (app === null) {
 registerServiceWorker();
 
 async function bootstrap(root: HTMLElement): Promise<void> {
+  // Search input is mounted ONCE above the dynamic content so its focus,
+  // value, and in-progress AbortController survive every revalidate cycle.
+  // STORY-009 will replace `onSelect` with slot-fill logic.
+  const search = renderSearchInput({
+    searchGeocoding: (query, signal) => searchGeocoding(query, { signal }),
+    onSelect: (place) => {
+      console.info('[main] location selected (STORY-009 will use this):', place);
+    },
+  });
+  const content = document.createElement('div');
+  content.className = 'app-content';
+  root.replaceChildren(search, content);
+
   const parsed = parseDefaultLocations(import.meta.env.VITE_DEFAULT_LOCATIONS);
   if (!parsed.ok) {
     // eslint-disable-next-line no-console
     console.error(
       `[main] default locations unavailable: ${parsed.error.kind} — ${parsed.error.message}`,
     );
-    root.replaceChildren(renderEmptyState('No default locations configured.'), renderFooter());
+    content.replaceChildren(renderEmptyState('No default locations configured.'), renderFooter());
     return;
   }
 
@@ -44,15 +59,15 @@ async function bootstrap(root: HTMLElement): Promise<void> {
   const initial = cache.read();
   let snapshot: CacheSnapshot = initial.ok ? initial.data : {};
   if (Object.keys(snapshot).length === 0) {
-    root.replaceChildren(renderLoading(), renderFooter());
+    content.replaceChildren(renderLoading(), renderFooter());
   } else {
-    render(root, slots, snapshot);
+    render(content, slots, snapshot);
   }
 
   // Stale-while-revalidate: fetch in parallel, swap in fresh data.
   const cycle = await revalidate(slots, { cache, fetchForecast, now: Date.now });
   snapshot = cycle.snapshot;
-  render(root, slots, snapshot);
+  render(content, slots, snapshot);
 
   // visibilitychange refresh: when the tab returns AND cache is older
   // than 30 min AND the browser is online, kick another revalidate
@@ -75,21 +90,21 @@ async function bootstrap(root: HTMLElement): Promise<void> {
     try {
       const next = await revalidate(slots, { cache, fetchForecast, now: Date.now });
       snapshot = next.snapshot;
-      render(root, slots, snapshot);
+      render(content, slots, snapshot);
     } finally {
       revalidating = false;
     }
   }
 }
 
-function render(root: HTMLElement, slots: LocationSlot[], snapshot: CacheSnapshot): void {
+function render(content: HTMLElement, slots: LocationSlot[], snapshot: CacheSnapshot): void {
   const forecasts: Record<string, ForecastResponse> = {};
   const lastUpdated: Record<string, number | undefined> = {};
   for (const [id, entry] of Object.entries(snapshot)) {
     forecasts[id] = entry.forecast;
     lastUpdated[id] = entry.fetchedAt;
   }
-  root.replaceChildren(
+  content.replaceChildren(
     renderHomeScreen(slots, forecasts, lastUpdated, Date.now()),
     renderFooter(),
   );
