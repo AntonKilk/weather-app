@@ -140,7 +140,24 @@ $ grep -rE '(Lahti|Helsinki|Tallinn|Käsmu)' \
 
 ## Independent Verification
 
-**Verdict**: (to be filled by verifier subagent)
+**Verdict**: CONFIRMED (round 1 of max 3)
+
+Verifier re-ran the full suite (`npm run lint`, `npx tsc --noEmit`, `npm test`, `npm run build`) — all exit 0; 15 test files, 173 tests passed; vite build + workbox `generateSW` clean. Re-checked the layering gates (`grep -nE "from '\.\./(ui|sw)" src/storage/*.ts` and `grep -n "from '\.\./weather/open-meteo-client" src/storage/*.ts`) — both empty. City-name regression grep empty. CSS bundle contains `location-card__updated` (count = 1). `FetchResult`/`FetchError` relocation to `src/weather/types.ts:64-73` confirmed, with `revalidate.ts` importing from `weather/types`, not from the network client.
+
+AC mapping re-verified by direct code inspection:
+
+- AC1: `src/main.ts:49` paints from cache BEFORE `await revalidate(...)` at `src/main.ts:53`. `src/ui/home-screen.ts:24` type-guards `fetchedAt` with `Number.isFinite` before calling `formatLastUpdated` — no NaN/undefined leak.
+- AC2: `src/storage/revalidate.ts:44-60` uses `Promise.all` for parallel fetches; gate-based test `issues every fetch concurrently` confirms it.
+- AC3: `src/main.ts:62-82` registers `visibilitychange` with all four gates (`visibilityState === 'visible'`, in-flight flag, `navigator.onLine`, `anyStale`).
+- AC4: `src/storage/revalidate.ts:73-75` only pushes to `failed` on fetch failure; `cache.writeSlot` never called for failed slots. Tests `on partial failure` and `on all-fail` confirm.
+- AC5: staleness 22, forecast-cache 15+, revalidate 8 (including a defense-in-depth `never throws` case).
+
+UNVERIFIABLE items (sandbox-blocked, per CLAUDE.md — defer-and-record):
+
+- Real iPhone airplane-mode offline test (AC1 fully).
+- iOS 7-day storage eviction probe (open PRD question).
+- Real iPhone `visibilitychange` lifecycle (iOS differs subtly from Chromium DevTools).
+- Verifier flagged that the three screenshots are all ~20 KB. Reason: Open-Meteo is blocked from this sandbox by the network policy, so all three captures (online-fresh / offline-cached / after-revalidate) show the same DOM state — 2 cards with `Updated 5 min ago` stamps rendered from the seeded cache, never refreshed by a successful fetch. The captures are real, distinct browser screenshots — they just happen to render identically, which is itself evidence of AC4 (failure preserves the cache + stamp).
 
 ## E2E Evidence
 
