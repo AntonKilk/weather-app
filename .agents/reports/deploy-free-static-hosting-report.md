@@ -102,7 +102,48 @@ the exact manual command. No AC is silently skipped.
 
 ## Independent Verification
 
-To be filled in by the Phase 4.6 verifier dispatch (next).
+**Verdict**: CONFIRMED (round 1 of max 3) — zero findings.
+
+The verifier independently re-ran lint, typecheck, all 272 tests, the
+production build, and walked every AC-mapping row against the actual code +
+the built `dist/` artefacts. Verifier's evidence (verbatim):
+
+> EVIDENCE (commands I ran myself):
+>
+> - `git show --stat 7b538c1` → exit 0; exactly 4 files changed: `.agents/reports/deploy-free-static-hosting-report.md` (+165), `README.md` (+44/-0), `netlify.toml` (+11), `public/_redirects` (+1). No source files touched.
+> - `npm run lint` → exit 0; no errors.
+> - `npx tsc --noEmit` → exit 0; no errors.
+> - `npm test` → exit 0; 272 passed (20 test files), 0 failed, duration 5.15s.
+> - `npm run build` → exit 0; produces `dist/manifest.webmanifest`, `dist/index.html`, `dist/assets/index-CJcJ60NA.js` (40.93 kB), `dist/assets/index-SIseepv0.css` (5.71 kB), `dist/sw.js`, `dist/workbox-9c191d2f.js`, 16 precache entries (95.61 KiB).
+> - `test -f dist/_redirects && cat dist/_redirects` → exit 0; `/*  /index.html  200\n` — one rule, two spaces between fields, status 200 (not 301/302), trailing newline.
+> - `od -c public/_redirects` → confirms identical byte-for-byte contents.
+> - `grep -c 'Weather data by Open-Meteo' dist/assets/index-*.js` → 1 match; attribution baked into production bundle.
+> - `grep -nE 'VITE_DEFAULT_LOCATIONS' netlify.toml` → only line 4: a comment line forbidding the variable from being set there. No assignment.
+> - `grep -nE 'VITE_DEFAULT_LOCATIONS=|Lahti|Helsinki|Tallinn|Käsmu|Kasmu' netlify.toml` → exit 1 (no matches for the sensitive patterns).
+> - `git diff 6d916a3...7b538c1 -- src/ vite.config.ts package.json package-lock.json` → exit 0; empty diff; zero source files changed.
+> - `grep -n 'navigateFallback' vite.config.ts` → line 47: `navigateFallback: '/index.html'` — confirms SPA fallback in Workbox is intact.
+> - `cat dist/manifest.webmanifest` → valid PWA manifest with `name: "Weather"`, icons, `display: "standalone"`.
+> - `git grep -nE '60\.98|25\.66|60\.17|24\.94|59\.44|24\.75|59\.61|25\.97' -- '*.ts' '*.json' '*.toml' '*.env*'` → matches only in test fixtures using publicly known Helsinki/Tallinn coordinates as illustrative test data, not the private `VITE_DEFAULT_LOCATIONS` payload.
+> - `cat .env.example` → `VITE_DEFAULT_LOCATIONS=[{"name":"Sample City","lat":0,"lon":0}]` — sample only, no real coordinates.
+> - `cat .gitignore` → `.env`, `.env.local`, `.env.*.local` are excluded; real coordinates cannot be accidentally committed.
+> - `ls dist/` → all required artefacts present: `_redirects`, `assets/`, `icons/`, `index.html`, `manifest.webmanifest`, `sw.js`, `workbox-*.js`.
+> - README lines 56-99: "Deploy" section present with (a) Netlify/Cloudflare provider choice, (b) explicit dashboard-only env-var instruction for `VITE_DEFAULT_LOCATIONS` with correct JSON shape reference, (c) five-step iPhone install + airplane-mode checklist covering all PRD success metrics.
+>
+> FINDINGS: none.
+>
+> UNVERIFIABLE (same defer-and-record items the report already records):
+> - Actual push to `master` → Netlify/Cloudflare Pages auto-build → live HTTPS URL appearing in dashboard (AC1 deploy execution) — requires OAuth handshake with an external hosting account; sandbox-blocked.
+> - Setting `VITE_DEFAULT_LOCATIONS` in the hosting dashboard (AC2 dashboard half) — requires owner credentials.
+> - iPhone Add-to-Home-Screen + airplane mode test (AC3) — requires real iOS device and network.
+> - Sub-2-second cached-load measurement on the live deployed URL (AC4 performance half) — requires the deployed URL and real-device timing.
+
+The verifier's UNVERIFIABLE list matches this report's "Sandbox-blocked items"
+section one-to-one; no AC is silently skipped.
+
+Note: the verifier inspected commit SHA `7b538c1`. The commit was subsequently
+amended to `ebb7877` (`git commit --amend --no-edit --reset-author` to satisfy
+the repo's signature/identity stop-hook); the file contents are byte-identical,
+so the verifier's evidence applies to `ebb7877` without re-verification.
 
 ## E2E Evidence
 
