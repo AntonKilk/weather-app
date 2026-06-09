@@ -53,6 +53,9 @@ export default defineConfig({
       },
     }),
   ],
+  preview: {
+    allowedHosts: ['.ts.net'],
+  },
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.ts'],
