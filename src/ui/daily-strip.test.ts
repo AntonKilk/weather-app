@@ -43,6 +43,35 @@ describe('renderDailyStrip', () => {
     }
   });
 
+  it('marks the cell matching selectedIso with the selected modifier and aria-pressed', () => {
+    const strip = renderDailyStrip(MOCK_FORECASTS['mock-1']!.daily, '2026-06-07', {
+      selectedIso: '2026-06-09',
+    });
+    const cells = strip.querySelectorAll<HTMLElement>('.daily-strip__cell');
+    expect(cells[2]!.classList.contains('daily-strip__cell--selected')).toBe(true);
+    expect(cells[0]!.classList.contains('daily-strip__cell--selected')).toBe(false);
+    const buttons = strip.querySelectorAll<HTMLButtonElement>('.daily-strip__button');
+    expect(buttons[2]!.getAttribute('aria-pressed')).toBe('true');
+    expect(buttons[0]!.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('reports the tapped day via onSelectDay and moves the selected highlight', () => {
+    const seen: string[] = [];
+    const strip = renderDailyStrip(MOCK_FORECASTS['mock-1']!.daily, '2026-06-07', {
+      selectedIso: '2026-06-07',
+      onSelectDay: (iso) => seen.push(iso),
+    });
+    document.body.appendChild(strip);
+    const buttons = strip.querySelectorAll<HTMLButtonElement>('.daily-strip__button');
+    buttons[3]!.click();
+    expect(seen).toEqual(['2026-06-10']);
+    const cells = strip.querySelectorAll<HTMLElement>('.daily-strip__cell');
+    expect(cells[3]!.classList.contains('daily-strip__cell--selected')).toBe(true);
+    expect(cells[0]!.classList.contains('daily-strip__cell--selected')).toBe(false);
+    expect(buttons[3]!.getAttribute('aria-pressed')).toBe('true');
+    expect(buttons[0]!.getAttribute('aria-pressed')).toBe('false');
+  });
+
   it('renders an empty-state fallback when the daily forecast has no entries', () => {
     const empty: DailyForecast = {
       time: [],

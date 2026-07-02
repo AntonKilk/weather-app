@@ -22,6 +22,14 @@ export function formatHourLabel(iso: string): string {
 
 const WEEKDAY_FORMATTER = new Intl.DateTimeFormat('en-US', { weekday: 'short' });
 
+export function todayCalendarDate(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function calendarDate(iso: string): string | null {
   // Accept both 'YYYY-MM-DD' and full ISO; collapse to the calendar-date prefix.
   const date = new Date(iso);

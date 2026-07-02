@@ -1,19 +1,27 @@
 import type { DailyForecast } from '../weather/types';
 import { wmoToCondition } from '../weather/wmo-codes';
-import { formatTemperature, formatWeekdayShort } from './format';
+import { formatTemperature, formatWeekdayShort, todayCalendarDate } from './format';
 import { renderIconSvg } from './icon';
 
 const MAX_DAYS = 7;
 
-function todayCalendarDate(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+export interface DailyStripOptions {
+  // Calendar day ('YYYY-MM-DD' or full ISO) whose cell starts highlighted.
+  selectedIso?: string;
+  // When provided, cells become day switchers: tapping one moves the
+  // selection highlight and reports the day's ISO date to the caller.
+  onSelectDay?: (dayIso: string) => void;
 }
 
-export function renderDailyStrip(daily: DailyForecast, todayIso?: string): HTMLElement {
+function sameCalendarDay(a: string, b: string): boolean {
+  return a.slice(0, 10) === b.slice(0, 10);
+}
+
+export function renderDailyStrip(
+  daily: DailyForecast,
+  todayIso?: string,
+  options?: DailyStripOptions,
+): HTMLElement {
   const list = document.createElement('ul');
   list.className = 'daily-strip';
 
@@ -27,6 +35,7 @@ export function renderDailyStrip(daily: DailyForecast, todayIso?: string): HTMLE
   }
 
   const today = todayIso ?? todayCalendarDate();
+  const selected = options?.selectedIso;
   const count = Math.min(MAX_DAYS, daily.time.length);
 
   for (let i = 0; i < count; i++) {
@@ -52,15 +61,25 @@ export function renderDailyStrip(daily: DailyForecast, todayIso?: string): HTMLE
     if (dayLabel === 'Today') {
       cell.classList.add('daily-strip__cell--today');
     }
+    const isSelected = selected !== undefined && sameCalendarDay(iso, selected);
+    if (isSelected) {
+      cell.classList.add('daily-strip__cell--selected');
+    }
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'daily-strip__button';
+    button.dataset.dayIso = iso;
+    button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
 
     const day = document.createElement('span');
     day.className = 'daily-strip__day';
     day.textContent = dayLabel;
-    cell.appendChild(day);
+    button.appendChild(day);
 
     const condition = wmoToCondition(code);
     const icon = renderIconSvg(condition.iconKey, condition.description);
-    cell.appendChild(icon);
+    button.appendChild(icon);
 
     const temps = document.createElement('span');
     temps.className = 'daily-strip__temps';
@@ -71,9 +90,35 @@ export function renderDailyStrip(daily: DailyForecast, todayIso?: string): HTMLE
     minSpan.className = 'daily-strip__min';
     minSpan.textContent = formatTemperature(min);
     temps.append(maxSpan, minSpan);
-    cell.appendChild(temps);
+    button.appendChild(temps);
 
+    cell.appendChild(button);
     list.appendChild(cell);
+  }
+
+  const onSelectDay = options?.onSelectDay;
+  if (onSelectDay !== undefined) {
+    list.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+      const button = target.closest<HTMLButtonElement>('.daily-strip__button');
+      if (button === null || !list.contains(button)) {
+        return;
+      }
+      const dayIso = button.dataset.dayIso;
+      if (dayIso === undefined) {
+        return;
+      }
+      for (const other of list.querySelectorAll('.daily-strip__button')) {
+        other.setAttribute('aria-pressed', other === button ? 'true' : 'false');
+      }
+      for (const otherCell of list.querySelectorAll('.daily-strip__cell')) {
+        otherCell.classList.toggle('daily-strip__cell--selected', otherCell.contains(button));
+      }
+      onSelectDay(dayIso);
+    });
   }
 
   return list;
